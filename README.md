@@ -110,6 +110,8 @@ Fragments of RoseGold's own front-end, written in RoseGold and run natively
 - `cpp/examples/bootstrap.rg` — a lexer that streams tokens from an embedded string.
 - `cpp/examples/bootstrap2.rg` — a lexer that **reads a real `.rg` file** and builds a **token list**, using the standard library.
 - `cpp/examples/calc.rg` — a full **tokenize → recursive-descent parse → evaluate** pipeline for arithmetic, building a **recursive enum AST** and walking it with `match`. The "parser + AST + eval" milestone — the shape of the real front-end.
+- `cpp/examples/mini.rg` — the calc pipeline plus **statements and variables**, using `Map<String, Int>` as the environment.
+- `cpp/examples/interp.rg` — a **Turing-complete** little imperative language (`if` / `while` / comparisons / reassignment, `end`-delimited blocks) interpreted in RoseGold; runs real algorithms (factorial, summation) via nested-block recursion over the AST.
 
 ```bash
 ./cpp/rosegoldc cpp/examples/bootstrap2.rg   # tokenizes cpp/examples/fib.rg -> 94 tokens
