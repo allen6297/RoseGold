@@ -47,6 +47,7 @@ loading. The formal grammar is `grammar.ebnf`, the module spec `resolution.md`.
 - `class` with `extends` (one base) + `uses` (traits), `init(...)` constructors
 - `trait` — abstract method signatures + optional **default bodies** (inherited by conformers, overridable); may use `Self` for the conforming type; a class that `uses` a trait must implement the abstract methods (checked), and a trait is a usable type (dynamic dispatch)
 - `extend Type uses Trait` — **retroactive conformance**: make an existing type (including primitives like `Int`/`String`, `List`/`Map`, or a class) conform to a trait after the fact, so it satisfies `<T: Trait>` bounds; methods dispatch dynamically (`3.lessThan(9)`)
+- **operator overloading** — `+ - * / %` dispatch to `add`/`sub`/`mul`/`div`/`mod`, `< <= > >=` to `compareTo`, and `== !=` to `equals` on any user type (class method or via `extend`); also works on trait-bounded generics (`a < b` where `T: Ordered`)
 - `enum` + `match` with variant destructuring
 - Generics with real inference: `Box(41)` infers `Box<Int>`; type args flow through methods
 - Trait-bounded generics `<T: Drawable>` — the bound is enforced at each call, and the body may only use the bound's members
@@ -104,10 +105,11 @@ real name/visibility/type errors inline. See its README to load it.
 
 ## Self-hosting
 
-Two fragments of RoseGold's own front-end, written in RoseGold and run natively
+Fragments of RoseGold's own front-end, written in RoseGold and run natively
 (output byte-identical to the Python engine):
 - `cpp/examples/bootstrap.rg` — a lexer that streams tokens from an embedded string.
 - `cpp/examples/bootstrap2.rg` — a lexer that **reads a real `.rg` file** and builds a **token list**, using the standard library.
+- `cpp/examples/calc.rg` — a full **tokenize → recursive-descent parse → evaluate** pipeline for arithmetic, building a **recursive enum AST** and walking it with `match`. The "parser + AST + eval" milestone — the shape of the real front-end.
 
 ```bash
 ./cpp/rosegoldc cpp/examples/bootstrap2.rg   # tokenizes cpp/examples/fib.rg -> 94 tokens
@@ -139,5 +141,5 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ editor support — VS Code extension (`editors/vscode/`): highlighting, config, and a native **language server** (`rosegoldc --lsp`): diagnostics, hover, go-to-definition (incl. locals/params), completion, document symbols/outline, signature help, and workspace-wide find-references + rename
 - ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
-- ✅ self-hosting fragments — a RoseGold lexer written in RoseGold (streams tokens; reads a file + builds a token list)
+- ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a lexer (streams tokens; reads a file + builds a token list) and a full tokenize→parse→eval pipeline over a recursive enum AST
 - ⏳ future: port the full compiler to RoseGold (true self-hosting); trait default-method bodies; primitives implementing built-in traits

@@ -367,15 +367,49 @@ struct TypeChecker {
         for (auto& kv : ct->bounds) { auto sit = s.find(kv.first); if (sit == s.end() || !sit->second) continue; for (auto& tb : kv.second) if (!satisfies(sit->second, tb)) err(lineOf(e), "type '" + tStr(sit->second) + "' does not satisfy bound '" + tb + "' on '" + kv.first + "'"); }
         return subst(ct->ret, s);
     }
+    // A FUNC-typed operator method reachable on a value: a class method, a bounded generic's trait method, or an extension method.
+    TyP operatorMethod(const TyP& t, const std::string& name) {
+        TyP m = nullptr;
+        if (t->k == Ty::NAMED && t->nkind == 0) m = findMember(t->name, name).first;
+        else if (t->k == Ty::TVAR) { for (auto& tb : t->tbounds) if (TyP x = traitMethod(tb, name)) { m = x; break; } }
+        else if (t->k == Ty::PRIM || t->k == Ty::LIST || t->k == Ty::MAP) { std::string tn = t->k == Ty::PRIM ? t->name : (t->k == Ty::LIST ? "List" : "Map"); auto xe = T[curm].exts.find(tn); if (xe != T[curm].exts.end()) { auto it = xe->second.methods.find(name); if (it != xe->second.methods.end()) m = it->second.first; } }
+        return (m && m->k == Ty::FUNC) ? m : nullptr;
+    }
+    // Build `recv.method(arg)` (recv/arg moved in) so the untyped compiler emits an INVOKE.
+    ExprP makeMethodCall(ExprP recv, const std::string& method, ExprP arg, int line, int col) {
+        auto mem = std::make_unique<Expr>(); mem->k = Expr::MEMBER; mem->sval = method; mem->line = line; mem->col = col; mem->lhs = std::move(recv);
+        auto call = std::make_unique<Expr>(); call->k = Expr::CALL; call->line = line; call->col = col; call->lhs = std::move(mem); call->args.push_back(std::move(arg));
+        return call;
+    }
     TyP inferBinary(Expr* e, Env& env) {
         std::string op = e->op; TyP lt = infer(e->lhs.get(), env), rt = infer(e->rhs.get(), env);
         auto anyv = [](const TyP& t) { return t->k == Ty::ANY || t->k == Ty::TVAR; };
         if (op == "&&" || op == "||") { if (!assignable(lt, tPrim("Bool"))) err(lineOf(e->lhs.get()), "'" + op + "' needs 'Bool', got '" + tStr(lt) + "'"); if (!assignable(rt, tPrim("Bool"))) err(lineOf(e->rhs.get()), "'" + op + "' needs 'Bool', got '" + tStr(rt) + "'"); return tPrim("Bool"); }
-        if (op == "==" || op == "!=") return tPrim("Bool");
-        if (op == "<" || op == "<=" || op == ">" || op == ">=") { bool ok = anyv(lt) || anyv(rt) || (lt->k == Ty::PRIM && rt->k == Ty::PRIM && lt->name == rt->name && (lt->name == "Int" || lt->name == "Float" || lt->name == "String")); if (!ok) err(lineOf(e->rhs.get()), "cannot compare '" + tStr(lt) + "' and '" + tStr(rt) + "'"); return tPrim("Bool"); }
+
+        bool arith = (op == "+" || op == "-" || op == "*" || op == "/" || op == "%");
+        bool cmp = (op == "<" || op == "<=" || op == ">" || op == ">=");
+        bool nativeNum = lt->k == Ty::PRIM && rt->k == Ty::PRIM && lt->name == rt->name && (lt->name == "Int" || lt->name == "Float");
+        bool nativeStr = op == "+" && lt->k == Ty::PRIM && lt->name == "String" && rt->k == Ty::PRIM && rt->name == "String";
+        bool nativeCmp = lt->k == Ty::PRIM && rt->k == Ty::PRIM && lt->name == rt->name && (lt->name == "Int" || lt->name == "Float" || lt->name == "String");
+
+        // --- operator overloading (desugar to a method call on the left operand) ---
+        if (arith && !nativeNum && !nativeStr) {
+            std::string mn = op == "+" ? "add" : op == "-" ? "sub" : op == "*" ? "mul" : op == "/" ? "div" : "mod";
+            if (TyP m = operatorMethod(lt, mn)) { if (!m->args.empty() && !assignable(rt, m->args[0])) err(lineOf(e->rhs.get()), "operator '" + op + "' on '" + tStr(lt) + "' expects '" + tStr(m->args[0]) + "', got '" + tStr(rt) + "'"); ExprP nn = makeMethodCall(std::move(e->lhs), mn, std::move(e->rhs), e->line, e->col); *e = std::move(*nn); return m->ret; }
+        }
+        if (cmp && !nativeCmp) {
+            if (TyP m = operatorMethod(lt, "compareTo")) { if (!m->args.empty() && !assignable(rt, m->args[0])) err(lineOf(e->rhs.get()), "'" + op + "' on '" + tStr(lt) + "' expects '" + tStr(m->args[0]) + "', got '" + tStr(rt) + "'"); ExprP c = makeMethodCall(std::move(e->lhs), "compareTo", std::move(e->rhs), e->line, e->col); e->lhs = std::move(c); auto zero = std::make_unique<Expr>(); zero->k = Expr::INT; zero->ival = 0; zero->line = e->line; e->rhs = std::move(zero); return tPrim("Bool"); }
+        }
+        if (op == "==" || op == "!=") {
+            if (TyP m = operatorMethod(lt, "equals")) { ExprP eq = makeMethodCall(std::move(e->lhs), "equals", std::move(e->rhs), e->line, e->col); if (op == "==") *e = std::move(*eq); else { auto un = std::make_unique<Expr>(); un->k = Expr::UNARY; un->op = "!"; un->line = e->line; un->lhs = std::move(eq); *e = std::move(*un); } }
+            return tPrim("Bool");
+        }
+
+        // --- native handling + leniency ---
+        if (cmp) { if (!(anyv(lt) || anyv(rt) || nativeCmp)) err(lineOf(e->rhs.get()), "cannot compare '" + tStr(lt) + "' and '" + tStr(rt) + "'"); return tPrim("Bool"); }
         if (anyv(lt) || anyv(rt)) return tAny();
-        if (op == "+" && lt->k == Ty::PRIM && lt->name == "String" && rt->k == Ty::PRIM && rt->name == "String") return tPrim("String");
-        if (lt->k == Ty::PRIM && rt->k == Ty::PRIM && lt->name == rt->name && (lt->name == "Int" || lt->name == "Float")) return lt;
+        if (nativeStr) return tPrim("String");
+        if (nativeNum) return lt;
         err(lineOf(e->rhs.get()), "cannot apply '" + op + "' to '" + tStr(lt) + "' and '" + tStr(rt) + "'"); return tAny();
     }
     TyP inferClosure(Expr* e, Env& env) {
