@@ -161,4 +161,24 @@ struct Runtime {
         if (it == prog.syms[entryMod].end() || it->second.kind != 0) throw std::runtime_error("no script function '" + fn + "'");
         return callFunc(prog, globals, it->second.index, args);
     }
+    // --- component model: instantiate a script class and call its methods (from C++) ---
+    // Construct an instance of a script class (its state lives in the instance, not globals).
+    Value newInstance(const std::string& className, std::vector<Value> args = {}) {
+        auto it = prog.syms[entryMod].find(className);
+        if (it == prog.syms[entryMod].end() || it->second.kind != 1) throw std::runtime_error("no script class '" + className + "'");
+        return callFunc(prog, globals, prog.classes[it->second.index].newFunc, args);
+    }
+    bool hasMethod(const Value& inst, const std::string& method) {
+        auto p = std::get_if<std::shared_ptr<Instance>>(&inst);
+        return p && prog.classes[(*p)->clsIndex].methods.count(method);
+    }
+    // Call a method on an instance (e.g. player.update(dt)); the instance is passed as self.
+    Value callMethod(const Value& inst, const std::string& method, std::vector<Value> args = {}) {
+        auto p = std::get_if<std::shared_ptr<Instance>>(&inst);
+        if (!p) throw std::runtime_error("callMethod: not an instance");
+        auto& ms = prog.classes[(*p)->clsIndex].methods; auto it = ms.find(method);
+        if (it == ms.end()) throw std::runtime_error("'" + (*p)->cls + "' has no method '" + method + "'");
+        std::vector<Value> full; full.push_back(inst); for (auto& a : args) full.push_back(a);
+        return callFunc(prog, globals, it->second, full);
+    }
 };

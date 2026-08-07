@@ -23,3 +23,4 @@ editors/jetbrains/.intellijPlatform/
 
 # Embedding demo binary
 cpp/embed/engine
+cpp/embed/game

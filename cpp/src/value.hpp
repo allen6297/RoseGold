@@ -5,10 +5,13 @@
 // Value
 // ---------------------------------------------------------------------
 struct ListObj; struct Instance; struct VariantVal; struct Closure; struct MapObj; struct Coro;
+// An opaque host object handed to scripts by a native (FFI). Scripts pass it back
+// to natives, which cast `obj` to the real engine type. `kind` labels it.
+struct Handle { std::string kind; std::shared_ptr<void> obj; };
 using Value = std::variant<std::monostate, int64_t, double, bool, std::string,
                            std::shared_ptr<ListObj>, std::shared_ptr<Instance>,
                            std::shared_ptr<VariantVal>, std::shared_ptr<Closure>,
-                           std::shared_ptr<MapObj>, std::shared_ptr<Coro>>;
+                           std::shared_ptr<MapObj>, std::shared_ptr<Coro>, std::shared_ptr<Handle>>;
 struct ListObj { std::vector<Value> items; };
 struct Instance { std::string cls; int clsIndex; std::map<std::string, Value> fields; };
 struct VariantVal { std::string enumName, name; std::vector<Value> vals; };
@@ -63,6 +66,7 @@ static std::string toStr(const Value& v) {
     }
     if (std::holds_alternative<std::shared_ptr<Closure>>(v)) return "<func>";
     if (std::holds_alternative<std::shared_ptr<Coro>>(v)) return "<coroutine>";
+    if (auto p = std::get_if<std::shared_ptr<Handle>>(&v)) return "<" + (*p)->kind + ">";
     if (auto p = std::get_if<std::shared_ptr<MapObj>>(&v)) {
         std::string s = "{";
         for (size_t i = 0; i < (*p)->items.size(); i++) { if (i) s += ", "; s += toStr((*p)->items[i].first) + ": " + toStr((*p)->items[i].second); }
