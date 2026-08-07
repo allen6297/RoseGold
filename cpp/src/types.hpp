@@ -140,7 +140,6 @@ struct TypeChecker {
         const std::string& name = n->name;
         if (name == "Self") return curSelf ? curSelf : tVar("Self");   // marker outside a type context; substituted at conformance/dispatch
         if (name == "Int" || name == "Float" || name == "String" || name == "Bool" || name == "Void") return tPrim(name);
-        if (name == "Vec2" || name == "Vec3" || name == "Vec") return tPrim("Vec");   // built-in value-type vectors
         if (name == "List") return tList(n->args.empty() ? tAny() : resolveType(n->args[0], gens, m));
         if (name == "Map") return tMap(n->args.size() > 0 ? resolveType(n->args[0], gens, m) : tAny(), n->args.size() > 1 ? resolveType(n->args[1], gens, m) : tAny());
         if (gens.count(name)) { TyP tv = tVar(name); if (curBounds) { auto b = curBounds->find(name); if (b != curBounds->end()) tv->tbounds = b->second; } return tv; }
@@ -148,6 +147,7 @@ struct TypeChecker {
         if (T[m].classes.count(name)) return tNamed(name, 0, args);
         if (T[m].enums.count(name)) return tNamed(name, 1, args);
         if (T[m].traits.count(name)) return tNamed(name, 2, args);
+        if (name == "Vec2" || name == "Vec3" || name == "Vec") return tPrim("Vec");   // built-in vectors (a user class/enum/trait of the same name wins)
         err(0, "unknown type '" + name + "'"); return tAny();
     }
     // The `Self` type for an extension of `n` (a primitive, List/Map, or a class); null if `n` isn't extendable.
