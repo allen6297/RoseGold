@@ -298,6 +298,14 @@ struct TypeChecker {
         b["has"] = tFunc({tMap(tVar("K"), tVar("V")), tVar("K")}, tPrim("Bool"));
         b["keys"] = tFunc({tMap(tVar("K"), tVar("V"))}, tList(tVar("K")));
         b["remove"] = tFunc({tMap(tVar("K"), tVar("V")), tVar("K")}, tPrim("Void"));
+        // math / game stdlib. Numeric inputs use a loose type var so both Int and Float literals work
+        // (RoseGold has no Int->Float coercion). abs/min/max/clamp preserve the argument type.
+        b["sqrt"] = tFunc({tVar("N")}, tPrim("Float")); b["sin"] = tFunc({tVar("N")}, tPrim("Float")); b["cos"] = tFunc({tVar("N")}, tPrim("Float")); b["tan"] = tFunc({tVar("N")}, tPrim("Float"));
+        b["atan2"] = tFunc({tVar("N"), tVar("N")}, tPrim("Float")); b["pow"] = tFunc({tVar("N"), tVar("N")}, tPrim("Float"));
+        b["floor"] = tFunc({tVar("N")}, tPrim("Int")); b["ceil"] = tFunc({tVar("N")}, tPrim("Int")); b["round"] = tFunc({tVar("N")}, tPrim("Int"));
+        b["abs"] = tFunc({tVar("N")}, tVar("N")); b["min"] = tFunc({tVar("N"), tVar("N")}, tVar("N")); b["max"] = tFunc({tVar("N"), tVar("N")}, tVar("N"));
+        b["lerp"] = tFunc({tVar("N"), tVar("N"), tVar("N")}, tPrim("Float")); b["clamp"] = tFunc({tVar("N"), tVar("N"), tVar("N")}, tVar("N"));
+        b["random"] = tFunc({}, tPrim("Float")); b["randint"] = tFunc({tPrim("Int"), tPrim("Int")}, tPrim("Int")); b["srandom"] = tFunc({tPrim("Int")}, tPrim("Void"));
         return b;
     }
     Binding lookup(const std::string& name, Env& env) {

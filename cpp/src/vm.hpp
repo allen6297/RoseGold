@@ -5,6 +5,10 @@
 // VM
 // ---------------------------------------------------------------------
 struct VMError : std::runtime_error { using std::runtime_error::runtime_error; };
+// Deterministic PRNG (xorshift64) for the game stdlib; seedable via srandom() for reproducible runs.
+static uint64_t g_rng = 88172645463325252ULL;
+static uint64_t rngNext() { g_rng ^= g_rng << 13; g_rng ^= g_rng >> 7; g_rng ^= g_rng << 17; return g_rng; }
+static double rngFloat() { return (double)(rngNext() >> 11) / 9007199254740992.0; }   // [0, 1)
 static Value arith(Op op, const Value& a, const Value& b) {
     if (op == Op::ADD && (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b))) return Value{toStr(a) + toStr(b)};
     if (!isNum(a) || !isNum(b)) throw VMError("cannot apply arithmetic to non-numbers");
@@ -95,6 +99,23 @@ static void execTop(Program& prog, std::vector<Value>& globals, int startIndex) 
                 else if (in.a == 16) { Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); bool r = false; for (auto& pr : M.items) if (valueEq(pr.first, kk)) { r = true; break; } st.push_back(Value{r}); }
                 else if (in.a == 17) { Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); auto lo = std::make_shared<ListObj>(); for (auto& pr : M.items) lo->items.push_back(pr.first); st.push_back(Value{lo}); }
                 else if (in.a == 18) { Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); for (size_t i = 0; i < M.items.size(); i++) if (valueEq(M.items[i].first, kk)) { M.items.erase(M.items.begin() + i); break; } st.push_back(Value{}); }
+                else if (in.a == 19) { Value x = st.back(); st.pop_back(); st.push_back(Value{std::sqrt(asNum(x))}); }
+                else if (in.a == 20) { Value x = st.back(); st.pop_back(); st.push_back(Value{std::sin(asNum(x))}); }
+                else if (in.a == 21) { Value x = st.back(); st.pop_back(); st.push_back(Value{std::cos(asNum(x))}); }
+                else if (in.a == 22) { Value x = st.back(); st.pop_back(); st.push_back(Value{std::tan(asNum(x))}); }
+                else if (in.a == 23) { Value b = st.back(); st.pop_back(); Value a = st.back(); st.pop_back(); st.push_back(Value{std::atan2(asNum(a), asNum(b))}); }
+                else if (in.a == 24) { Value x = st.back(); st.pop_back(); st.push_back(Value{(int64_t)std::floor(asNum(x))}); }
+                else if (in.a == 25) { Value x = st.back(); st.pop_back(); st.push_back(Value{(int64_t)std::ceil(asNum(x))}); }
+                else if (in.a == 26) { Value x = st.back(); st.pop_back(); st.push_back(Value{(int64_t)std::llround(asNum(x))}); }
+                else if (in.a == 27) { Value b = st.back(); st.pop_back(); Value a = st.back(); st.pop_back(); st.push_back(Value{std::pow(asNum(a), asNum(b))}); }
+                else if (in.a == 28) { Value v = st.back(); st.pop_back(); if (auto p = std::get_if<int64_t>(&v)) st.push_back(Value{(int64_t)std::llabs(*p)}); else st.push_back(Value{std::fabs(asNum(v))}); }
+                else if (in.a == 29) { Value b = st.back(); st.pop_back(); Value a = st.back(); st.pop_back(); st.push_back(asNum(a) <= asNum(b) ? a : b); }
+                else if (in.a == 30) { Value b = st.back(); st.pop_back(); Value a = st.back(); st.pop_back(); st.push_back(asNum(a) >= asNum(b) ? a : b); }
+                else if (in.a == 31) { Value tv = st.back(); st.pop_back(); Value bv = st.back(); st.pop_back(); Value av = st.back(); st.pop_back(); double a = asNum(av), b = asNum(bv), t = asNum(tv); st.push_back(Value{a + (b - a) * t}); }
+                else if (in.a == 32) { Value hv = st.back(); st.pop_back(); Value lv = st.back(); st.pop_back(); Value v = st.back(); st.pop_back(); double x = asNum(v); st.push_back(x < asNum(lv) ? lv : (x > asNum(hv) ? hv : v)); }
+                else if (in.a == 33) { st.push_back(Value{rngFloat()}); }
+                else if (in.a == 34) { Value hv = st.back(); st.pop_back(); Value lv = st.back(); st.pop_back(); int64_t lo = std::get<int64_t>(lv), hi = std::get<int64_t>(hv); if (hi < lo) std::swap(lo, hi); st.push_back(Value{lo + (int64_t)(rngNext() % (uint64_t)(hi - lo + 1))}); }
+                else if (in.a == 35) { Value s = st.back(); st.pop_back(); uint64_t seed = (uint64_t)std::get<int64_t>(s); g_rng = seed ? seed : 1; st.push_back(Value{}); }
                 break;
             }
             case Op::CALL: call(in.a, in.b); break;
