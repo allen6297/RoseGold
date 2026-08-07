@@ -10,6 +10,12 @@ static uint64_t g_rng = 88172645463325252ULL;
 static uint64_t rngNext() { g_rng ^= g_rng << 13; g_rng ^= g_rng >> 7; g_rng ^= g_rng << 17; return g_rng; }
 static double rngFloat() { return (double)(rngNext() >> 11) / 9007199254740992.0; }   // [0, 1)
 static Value arith(Op op, const Value& a, const Value& b) {
+    if (auto pa = std::get_if<Vec>(&a)) {   // vector arithmetic (component-wise; Vec*scalar and Vec/scalar)
+        if (auto pb = std::get_if<Vec>(&b)) { Vec r; r.n = pa->n > pb->n ? pa->n : pb->n; switch (op) { case Op::ADD: r.x = pa->x + pb->x; r.y = pa->y + pb->y; r.z = pa->z + pb->z; break; case Op::SUB: r.x = pa->x - pb->x; r.y = pa->y - pb->y; r.z = pa->z - pb->z; break; case Op::MUL: r.x = pa->x * pb->x; r.y = pa->y * pb->y; r.z = pa->z * pb->z; break; default: throw VMError("unsupported vector operator"); } return Value{r}; }
+        if (isNum(b)) { double s = asNum(b); Vec r = *pa; if (op == Op::MUL) { r.x *= s; r.y *= s; r.z *= s; } else if (op == Op::DIV) { r.x /= s; r.y /= s; r.z /= s; } else throw VMError("a vector and a scalar support only * and /"); return Value{r}; }
+        throw VMError("cannot combine a vector with that value");
+    }
+    if (isNum(a) && std::holds_alternative<Vec>(b)) { if (op != Op::MUL) throw VMError("scalar and vector support only *"); double s = asNum(a); Vec r = std::get<Vec>(b); r.x *= s; r.y *= s; r.z *= s; return Value{r}; }
     if (op == Op::ADD && (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b))) return Value{toStr(a) + toStr(b)};
     if (!isNum(a) || !isNum(b)) throw VMError("cannot apply arithmetic to non-numbers");
     bool bi = std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b);
@@ -59,7 +65,7 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
             case Op::IGET: { Value idx = st.back(); st.pop_back(); Value lst = st.back(); st.pop_back(); if (!std::holds_alternative<int64_t>(idx)) throw VMError("index must be an integer"); int64_t k = std::get<int64_t>(idx); if (auto sp = std::get_if<std::string>(&lst)) { if (k < 0 || k >= (int64_t)sp->size()) throw VMError("string index out of range"); st.push_back(Value{std::string(1, (*sp)[k])}); break; } ListObj& L = asList(lst); if (k < 0 || k >= (int64_t)L.items.size()) throw VMError("list index " + std::to_string(k) + " out of range"); st.push_back(L.items[k]); break; }
             case Op::ISET: { Value val = st.back(); st.pop_back(); Value idx = st.back(); st.pop_back(); Value lst = st.back(); st.pop_back(); if (!std::holds_alternative<int64_t>(idx)) throw VMError("index must be an integer"); int64_t k = std::get<int64_t>(idx); ListObj& L = asList(lst); if (k < 0 || k >= (int64_t)L.items.size()) throw VMError("list index " + std::to_string(k) + " out of range"); L.items[k] = val; break; }
             case Op::NEWOBJ: { auto inst = std::make_shared<Instance>(); inst->clsIndex = in.a; inst->cls = prog.classes[in.a].name; for (auto& fn : prog.classes[in.a].fieldNames) inst->fields[fn] = Value{}; st.push_back(Value{inst}); break; }
-            case Op::GETPROP: { Value o = st.back(); st.pop_back(); const std::string& name = std::get<std::string>(prog.consts[in.a]); Instance& I = asInst(o); auto it = I.fields.find(name); if (it == I.fields.end()) throw VMError("'" + I.cls + "' has no member '" + name + "'"); st.push_back(it->second); break; }
+            case Op::GETPROP: { Value o = st.back(); st.pop_back(); const std::string& name = std::get<std::string>(prog.consts[in.a]); if (auto pv = std::get_if<Vec>(&o)) { st.push_back(Value{name == "x" ? pv->x : name == "y" ? pv->y : name == "z" ? pv->z : 0.0}); break; } Instance& I = asInst(o); auto it = I.fields.find(name); if (it == I.fields.end()) throw VMError("'" + I.cls + "' has no member '" + name + "'"); st.push_back(it->second); break; }
             case Op::SETPROP: { Value val = st.back(); st.pop_back(); Value o = st.back(); st.pop_back(); asInst(o).fields[std::get<std::string>(prog.consts[in.a])] = val; break; }
             case Op::INVOKE: { int argc = in.b; const std::string& name = std::get<std::string>(prog.consts[in.a]); Value o = st[st.size() - argc - 1];
                 if (auto p = std::get_if<std::shared_ptr<Instance>>(&o)) { auto& ms = prog.classes[(*p)->clsIndex].methods; auto it = ms.find(name); if (it == ms.end()) throw VMError("'" + (*p)->cls + "' has no method '" + name + "'"); call(it->second, argc + 1); break; }
@@ -140,6 +146,11 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
                     st.push_back(result);
                 }
                 else if (in.a == 38) { Value cv = st.back(); st.pop_back(); auto p = std::get_if<std::shared_ptr<Coro>>(&cv); st.push_back(Value{p ? ((*p)->status == 2) : true}); }
+                else if (in.a == 39) { Value yv = st.back(); st.pop_back(); Value xv = st.back(); st.pop_back(); st.push_back(Value{Vec{asNum(xv), asNum(yv), 0.0, 2}}); }
+                else if (in.a == 40) { Value zv = st.back(); st.pop_back(); Value yv = st.back(); st.pop_back(); Value xv = st.back(); st.pop_back(); st.push_back(Value{Vec{asNum(xv), asNum(yv), asNum(zv), 3}}); }
+                else if (in.a == 41) { Value bv = st.back(); st.pop_back(); Value av = st.back(); st.pop_back(); Vec& A = std::get<Vec>(av); Vec& B = std::get<Vec>(bv); st.push_back(Value{A.x * B.x + A.y * B.y + A.z * B.z}); }
+                else if (in.a == 42) { Value v = st.back(); st.pop_back(); Vec& V = std::get<Vec>(v); st.push_back(Value{std::sqrt(V.x * V.x + V.y * V.y + V.z * V.z)}); }
+                else if (in.a == 43) { Value v = st.back(); st.pop_back(); Vec r = std::get<Vec>(v); double L = std::sqrt(r.x * r.x + r.y * r.y + r.z * r.z); if (L > 0.0) { r.x /= L; r.y /= L; r.z /= L; } st.push_back(Value{r}); }
                 break;
             }
             case Op::YIELD: { Value v = st.back(); st.pop_back(); throw YieldSignal{v}; }

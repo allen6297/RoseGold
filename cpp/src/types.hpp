@@ -140,6 +140,7 @@ struct TypeChecker {
         const std::string& name = n->name;
         if (name == "Self") return curSelf ? curSelf : tVar("Self");   // marker outside a type context; substituted at conformance/dispatch
         if (name == "Int" || name == "Float" || name == "String" || name == "Bool" || name == "Void") return tPrim(name);
+        if (name == "Vec2" || name == "Vec3" || name == "Vec") return tPrim("Vec");   // built-in value-type vectors
         if (name == "List") return tList(n->args.empty() ? tAny() : resolveType(n->args[0], gens, m));
         if (name == "Map") return tMap(n->args.size() > 0 ? resolveType(n->args[0], gens, m) : tAny(), n->args.size() > 1 ? resolveType(n->args[1], gens, m) : tAny());
         if (gens.count(name)) { TyP tv = tVar(name); if (curBounds) { auto b = curBounds->find(name); if (b != curBounds->end()) tv->tbounds = b->second; } return tv; }
@@ -318,6 +319,9 @@ struct TypeChecker {
         b["abs"] = tFunc({tVar("N")}, tVar("N")); b["min"] = tFunc({tVar("N"), tVar("N")}, tVar("N")); b["max"] = tFunc({tVar("N"), tVar("N")}, tVar("N"));
         b["lerp"] = tFunc({tVar("N"), tVar("N"), tVar("N")}, tPrim("Float")); b["clamp"] = tFunc({tVar("N"), tVar("N"), tVar("N")}, tVar("N"));
         b["random"] = tFunc({}, tPrim("Float")); b["randint"] = tFunc({tPrim("Int"), tPrim("Int")}, tPrim("Int")); b["srandom"] = tFunc({tPrim("Int")}, tPrim("Void"));
+        // built-in value-type vectors (Vec2/Vec3): constructors + dot / length / normalize
+        b["vec2"] = tFunc({tVar("N"), tVar("N")}, tPrim("Vec")); b["vec3"] = tFunc({tVar("N"), tVar("N"), tVar("N")}, tPrim("Vec"));
+        b["dot"] = tFunc({tPrim("Vec"), tPrim("Vec")}, tPrim("Float")); b["vlen"] = tFunc({tPrim("Vec")}, tPrim("Float")); b["norm"] = tFunc({tPrim("Vec")}, tPrim("Vec"));
         // coroutines: coroutine(fn) -> a coroutine; resume(coro[, arg]) runs to the next yield/return; done(coro) -> Bool
         b["coroutine"] = tFunc({tAny()}, tAny(), true); b["resume"] = tFunc({tAny()}, tAny(), true); b["done"] = tFunc({tAny()}, tPrim("Bool"));
         if (natives) for (auto& e : natives->entries) { std::vector<TyP> ps; for (auto& p : e.sig.params) ps.push_back(nativeTy(p)); b[e.name] = tFunc(ps, nativeTy(e.sig.ret), e.sig.variadic); }
@@ -385,6 +389,9 @@ struct TypeChecker {
         } else if (o->k == Ty::TVAR && !o->tbounds.empty()) {            // bounded generic: only the bound's members are available (Self = this type param)
             for (auto& tb : o->tbounds) if (TyP mt = traitMethod(tb, field)) { std::map<std::string, TyP> ss; ss["Self"] = o; result = subst(mt, ss); break; }
             if (result->k == Ty::ANY) { std::string bs; for (size_t i = 0; i < o->tbounds.size(); i++) { if (i) bs += " + "; bs += o->tbounds[i]; } err(lineOf(e), "trait bound (" + bs + ") has no member '" + field + "'"); }
+        } else if (o->k == Ty::PRIM && o->name == "Vec") {   // built-in vector: .x / .y / .z
+            if (field == "x" || field == "y" || field == "z") result = tPrim("Float");
+            else err(lineOf(e), "a vector has no member '" + field + "'");
         } else if (o->k == Ty::PRIM || o->k == Ty::LIST || o->k == Ty::MAP) {   // extension method on a primitive/List/Map
             std::string tn = o->k == Ty::PRIM ? o->name : (o->k == Ty::LIST ? "List" : "Map");
             auto xe = T[curm].exts.find(tn);
@@ -425,6 +432,16 @@ struct TypeChecker {
         std::string op = e->op; TyP lt = infer(e->lhs.get(), env), rt = infer(e->rhs.get(), env);
         auto anyv = [](const TyP& t) { return t->k == Ty::ANY || t->k == Ty::TVAR; };
         if (op == "&&" || op == "||") { if (!assignable(lt, tPrim("Bool"))) err(lineOf(e->lhs.get()), "'" + op + "' needs 'Bool', got '" + tStr(lt) + "'"); if (!assignable(rt, tPrim("Bool"))) err(lineOf(e->rhs.get()), "'" + op + "' needs 'Bool', got '" + tStr(rt) + "'"); return tPrim("Bool"); }
+
+        auto isVec = [](const TyP& t) { return t->k == Ty::PRIM && t->name == "Vec"; };
+        if (isVec(lt) || isVec(rt)) {   // built-in vector math
+            auto numOrAny = [&](const TyP& t) { return anyv(t) || (t->k == Ty::PRIM && (t->name == "Float" || t->name == "Int")); };
+            if (op == "==" || op == "!=") return tPrim("Bool");
+            if ((op == "+" || op == "-" || op == "*") && isVec(lt) && isVec(rt)) return tPrim("Vec");
+            if ((op == "*" || op == "/") && isVec(lt) && numOrAny(rt)) return tPrim("Vec");
+            if (op == "*" && isVec(rt) && numOrAny(lt)) return tPrim("Vec");
+            err(lineOf(e->rhs.get()), "cannot apply '" + op + "' to '" + tStr(lt) + "' and '" + tStr(rt) + "'"); return tAny();
+        }
 
         bool arith = (op == "+" || op == "-" || op == "*" || op == "/" || op == "%");
         bool cmp = (op == "<" || op == "<=" || op == ">" || op == ">=");
