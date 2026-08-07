@@ -97,6 +97,7 @@ static std::string stripLinePrefix(const std::string& msg) {   // drop a leading
 struct DocState {
     std::string text, path, root, entryMod;
     std::vector<Occ> occs;                                   // identifier index for the open file (declarations + uses)
+    std::vector<InlayH> inlays;                              // inferred-type hints for the open file
     std::map<std::string, std::string> modFile;             // module key -> source path
     std::set<std::pair<int, int>> enumDecls;                // enum-name positions (enum/variant symbols aren't renamable in v1)
 };
@@ -165,7 +166,7 @@ struct Lsp {
     // --- diagnostics + occurrence index ---------------------------------
     void analyze(const std::string& uri) {
         DocState& d = docs[uri];
-        d.occs.clear(); d.modFile.clear(); d.enumDecls.clear();
+        d.occs.clear(); d.inlays.clear(); d.modFile.clear(); d.enumDecls.clear();
         std::vector<std::tuple<std::string, int, std::string>> diags;
         std::map<std::string, Parsed> mods; std::vector<std::string> order;
         if (loadGraph(d.path, &d.text, mods, order, d.entryMod, d.root, d.modFile, diags)) {
@@ -173,6 +174,7 @@ struct Lsp {
             try { tc.build(); tc.check(); } catch (const std::exception&) {}
             for (auto& e : tc.errors) diags.push_back(e);
             for (auto& oc : tc.occs) if (oc.occMod == d.entryMod) d.occs.push_back(oc);
+            for (auto& h : tc.inlays) if (h.mod == d.entryMod) d.inlays.push_back(h);
             for (auto& E : mods[d.entryMod].enums) d.enumDecls.insert({E.nameLine, E.nameCol});
         }
         publishDiagnostics(uri, d.entryMod, diags);
@@ -382,6 +384,69 @@ struct Lsp {
         reply(id, "[" + arr + "]");
     }
 
+    // --- semantic tokens (type-aware highlighting) ----------------------
+    void onSemanticTokens(const Json& id, const Json& params) {
+        std::string uri; if (auto td = params.get("textDocument")) if (auto u = td->get("uri")) uri = u->s;
+        auto it = docs.find(uri); if (it == docs.end()) { reply(id, "{\"data\":[]}"); return; }
+        const DocState& d = it->second;
+        std::vector<const Occ*> toks;
+        for (auto& o : d.occs) if (o.sem >= 0 && o.occMod == d.entryMod && o.line > 0) toks.push_back(&o);
+        std::sort(toks.begin(), toks.end(), [](const Occ* a, const Occ* b) { return a->line != b->line ? a->line < b->line : a->col < b->col; });
+        std::string data; int pl = 0, pc = 0, seenL = -1, seenC = -1;
+        for (auto* o : toks) {
+            int line = o->line - 1, col = o->col - 1;
+            if (line == seenL && col == seenC) continue;                       // dedupe overlaps
+            seenL = line; seenC = col;
+            int dl = line - pl, dc = (dl == 0) ? col - pc : col;
+            if (!data.empty()) data += ",";
+            data += std::to_string(dl) + "," + std::to_string(dc) + "," + std::to_string(o->len) + "," + std::to_string(o->sem) + ",0";
+            pl = line; pc = col;
+        }
+        reply(id, "{\"data\":[" + data + "]}");
+    }
+
+    // --- document highlight (all occurrences of the symbol under the cursor) ---
+    void onDocumentHighlight(const Json& id, const Json& params) {
+        auto [uri, line, ch] = docPos(params);
+        auto it = docs.find(uri); if (it == docs.end()) { reply(id, "null"); return; }
+        const DocState& d = it->second; const Occ* sym = occAt(d, line, ch);
+        if (!sym) { reply(id, "null"); return; }
+        std::string arr;
+        for (auto* o : refsOf(d, sym, true)) { if (!arr.empty()) arr += ","; arr += "{\"range\":" + rangeJson(o->line - 1, o->col - 1, o->col - 1 + o->len) + ",\"kind\":1}"; }
+        reply(id, "[" + arr + "]");
+    }
+
+    // --- folding ranges (indentation-based) -----------------------------
+    void onFoldingRange(const Json& id, const Json& params) {
+        std::string uri; if (auto td = params.get("textDocument")) if (auto u = td->get("uri")) uri = u->s;
+        auto it = docs.find(uri); if (it == docs.end()) { reply(id, "[]"); return; }
+        std::vector<std::string> lines; { std::string cur; for (char c : it->second.text) { if (c == '\n') { lines.push_back(cur); cur.clear(); } else cur += c; } lines.push_back(cur); }
+        auto indent = [](const std::string& s) { int k = 0; while (k < (int)s.size() && s[k] == ' ') k++; return k == (int)s.size() ? -1 : k; };   // -1 = blank
+        std::string arr; int n = (int)lines.size();
+        for (int i = 0; i < n; i++) {
+            int ii = indent(lines[i]); if (ii < 0) continue;
+            int j = i + 1; while (j < n && indent(lines[j]) < 0) j++;
+            if (j < n && indent(lines[j]) > ii) {
+                int last = j, k = j;
+                while (k < n) { int ik = indent(lines[k]); if (ik < 0) { k++; continue; } if (ik > ii) { last = k; k++; } else break; }
+                if (!arr.empty()) arr += ",";
+                arr += "{\"startLine\":" + std::to_string(i) + ",\"endLine\":" + std::to_string(last) + "}";
+            }
+        }
+        reply(id, "[" + arr + "]");
+    }
+
+    // --- inlay hints (inferred types on un-annotated vars) --------------
+    void onInlayHint(const Json& id, const Json& params) {
+        std::string uri; if (auto td = params.get("textDocument")) if (auto u = td->get("uri")) uri = u->s;
+        auto it = docs.find(uri); if (it == docs.end()) { reply(id, "[]"); return; }
+        int lo = 0, hi = 1 << 30;
+        if (auto r = params.get("range")) { if (auto s = r->get("start")) if (auto l = s->get("line")) lo = (int)l->num; if (auto e = r->get("end")) if (auto l = e->get("line")) hi = (int)l->num; }
+        std::string arr;
+        for (auto& h : it->second.inlays) { int ln = h.line - 1; if (ln < lo || ln > hi) continue; if (!arr.empty()) arr += ","; arr += "{\"position\":{\"line\":" + std::to_string(ln) + ",\"character\":" + std::to_string(h.col - 1) + "},\"label\":" + jstr(h.label) + ",\"kind\":1,\"paddingLeft\":false}"; }
+        reply(id, "[" + arr + "]");
+    }
+
     // --- signature help --------------------------------------------------
     void onSignatureHelp(const Json& id, const Json& params) {
         auto [uri, line, ch] = docPos(params);
@@ -506,7 +571,9 @@ struct Lsp {
                 if (wsRoot.empty()) if (auto rp = params->get("rootPath")) { if (rp->t == Json::STR) wsRoot = rp->s; }
                 reply(*idp, "{\"capabilities\":{\"textDocumentSync\":1,\"hoverProvider\":true,"
                             "\"definitionProvider\":true,\"referencesProvider\":true,"
-                            "\"documentSymbolProvider\":true,"
+                            "\"documentSymbolProvider\":true,\"documentHighlightProvider\":true,"
+                            "\"foldingRangeProvider\":true,\"inlayHintProvider\":true,"
+                            "\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"type\",\"class\",\"enum\",\"interface\",\"function\",\"method\",\"property\",\"variable\",\"parameter\"],\"tokenModifiers\":[]},\"full\":true},"
                             "\"renameProvider\":{\"prepareProvider\":true},"
                             "\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\"]},"
                             "\"completionProvider\":{\"triggerCharacters\":[\".\"]}},"
@@ -539,6 +606,14 @@ struct Lsp {
                 onDocumentSymbol(*idp, *params);
             } else if (method == "textDocument/signatureHelp") {
                 onSignatureHelp(*idp, *params);
+            } else if (method == "textDocument/semanticTokens/full") {
+                onSemanticTokens(*idp, *params);
+            } else if (method == "textDocument/documentHighlight") {
+                onDocumentHighlight(*idp, *params);
+            } else if (method == "textDocument/foldingRange") {
+                onFoldingRange(*idp, *params);
+            } else if (method == "textDocument/inlayHint") {
+                onInlayHint(*idp, *params);
             } else if (idp) {
                 reply(*idp, "null");                         // unknown request: null result
             }

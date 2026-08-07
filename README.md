@@ -140,7 +140,7 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ error handling (`raise` / `try` / `catch`)
 - ✅ `init:` load-time execution model + `main()` entry
 - ✅ native compiler + runtime — self-contained C++ (`cpp/`): typed parser + static type checker + bytecode VM, at **full parity** with Python (byte-identical output; identical type errors)
-- ✅ editor support — VS Code extension (`editors/vscode/`): highlighting, config, and a native **language server** (`rosegoldc --lsp`): diagnostics, hover, go-to-definition (incl. locals/params), completion, document symbols/outline, signature help, and workspace-wide find-references + rename
+- ✅ editor support — VS Code extension (`editors/vscode/`): highlighting, config, and a native **language server** (`rosegoldc --lsp`): diagnostics, hover, go-to-definition (incl. locals/params), completion, document symbols/outline, signature help, workspace-wide find-references + rename, semantic tokens, document highlight, folding, and inlay hints
 - ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
 - ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a lexer (streams tokens; reads a file + builds a token list) and a full tokenize→parse→eval pipeline over a recursive enum AST

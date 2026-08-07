@@ -14,6 +14,9 @@ Language support for [RoseGold](../../README.md) `.rg` files.
   - **Rename** (F2) — safely rename a symbol everywhere it's used, across every `.rg` file in the workspace (grouped by definition, so same-named-but-different symbols aren't touched). Enum/variant names are excluded for now.
   - **Outline / breadcrumbs** (⌘⇧O) — document symbols: classes with their fields & methods, funcs, enums, traits, globals.
   - **Signature help** — as you type a call `foo(`, the signature and active parameter are shown.
+  - **Semantic highlighting** — type-aware token colors (classes vs functions vs methods vs parameters vs variables), layered over the TextMate grammar.
+  - **Document highlight** — all occurrences of the symbol under the cursor.
+  - **Folding** and **inlay hints** — collapse blocks; inferred types shown after un-annotated `var`s (e.g. `var c = Counter(10)` → `: Counter`).
 
 ## Prerequisites
 1. **Build the compiler** (it *is* the language server):

@@ -40,7 +40,12 @@ struct Occ {
     std::string defMod; int defLine = 0, defCol = 0;  // definition location (defLine 0 = unknown)
     int recv = 0;                        // 1 if a MEMBER access (its ty is the member's type)
     std::string recvClass, recvMod;     // for MEMBER/completion: receiver's class name or module name
+    int sem = -1;                        // semantic-token type index (see SEM_* / legend), -1 = don't emit
 };
+// Semantic token type indices (must match the legend advertised to the client).
+enum { SEM_TYPE = 0, SEM_CLASS = 1, SEM_ENUM = 2, SEM_INTERFACE = 3, SEM_FUNCTION = 4, SEM_METHOD = 5, SEM_PROPERTY = 6, SEM_VARIABLE = 7, SEM_PARAMETER = 8 };
+// An inlay hint: the inferred type shown after an un-annotated `var` name.
+struct InlayH { std::string mod; int line = 0, col = 0; std::string label; };
 
 struct TypeChecker {
     std::map<std::string, Parsed>& mods; std::vector<std::string>& order;
@@ -51,6 +56,7 @@ struct TypeChecker {
     TyP curSelf = nullptr;         // what `Self` resolves to here (a class while building/checking it; else a marker TVAR)
     std::map<std::string, std::string> qual; std::map<std::string, std::pair<std::string, std::string>> sel;
     std::vector<Occ> occs; bool recordOcc = false;   // LSP index (populated only when recordOcc)
+    std::vector<InlayH> inlays;                       // inferred-type hints on un-annotated vars
     TypeChecker(std::map<std::string, Parsed>& m, std::vector<std::string>& o) : mods(m), order(o) {}
 
     // An environment binding: a value's type plus, for locals/params/loop vars, its 1-based declaration site
@@ -83,11 +89,20 @@ struct TypeChecker {
         return false;
     }
     bool inEnv(const std::string& name, Env& env) { for (auto& sc : env) if (sc.count(name)) return true; return false; }
+    // Classify a value reference for semantic highlighting (by name kind, then by type shape).
+    int classifyValue(const std::string& name, const TyP& ty) {
+        if (T[curm].classes.count(name)) return SEM_CLASS;
+        if (T[curm].enums.count(name)) return SEM_ENUM;
+        if (T[curm].traits.count(name)) return SEM_INTERFACE;
+        if (ty && ty->k == Ty::FUNC) { TyP r = ty->ret; if (r && r->k == Ty::NAMED && r->nkind == 1) return SEM_ENUM; if (r && r->k == Ty::NAMED && r->nkind == 0 && r->name == name) return SEM_CLASS; return SEM_FUNCTION; }
+        if (ty && ty->k == Ty::NAMED && ty->nkind == 1) return SEM_ENUM;
+        return SEM_VARIABLE;
+    }
     // A declaration site, recorded as an occurrence that is its own definition (so find-references / rename
     // can group a symbol's declaration together with all its uses, and the cursor may sit on either).
-    void recordDecl(const std::string& name, int line, int col, const TyP& ty) {
+    void recordDecl(const std::string& name, int line, int col, const TyP& ty, int sem = -1) {
         if (!recordOcc || line <= 0) return;
-        Occ o; o.occMod = curm; o.line = line; o.col = col; o.len = (int)name.size(); o.name = name; o.ty = ty;
+        Occ o; o.occMod = curm; o.line = line; o.col = col; o.len = (int)name.size(); o.name = name; o.ty = ty; o.sem = sem;
         o.defMod = curm; o.defLine = line; o.defCol = col;
         occs.push_back(std::move(o));
     }
@@ -95,20 +110,21 @@ struct TypeChecker {
     void recordDecls(const std::string& m) {
         if (!recordOcc) return;
         auto& P = mods[m]; auto& MT = T[m];
-        for (auto& f : P.funcs) recordDecl(f.name, f.nameLine, f.nameCol, MT.values.count(f.name) ? MT.values[f.name] : tAny());
-        for (auto& g : P.globals) if (g.k == Stmt::VAR) recordDecl(g.name, g.nameLine, g.nameCol, MT.values.count(g.name) ? MT.values[g.name] : tAny());
-        for (auto& E : P.enums) recordDecl(E.name, E.nameLine, E.nameCol, tNamed(E.name, 1));
-        for (auto& Tr : P.traits) recordDecl(Tr.name, Tr.nameLine, Tr.nameCol, tNamed(Tr.name, 2));
+        for (auto& f : P.funcs) recordDecl(f.name, f.nameLine, f.nameCol, MT.values.count(f.name) ? MT.values[f.name] : tAny(), SEM_FUNCTION);
+        for (auto& g : P.globals) if (g.k == Stmt::VAR) recordDecl(g.name, g.nameLine, g.nameCol, MT.values.count(g.name) ? MT.values[g.name] : tAny(), SEM_VARIABLE);
+        for (auto& E : P.enums) recordDecl(E.name, E.nameLine, E.nameCol, tNamed(E.name, 1), SEM_ENUM);
+        for (auto& Tr : P.traits) recordDecl(Tr.name, Tr.nameLine, Tr.nameCol, tNamed(Tr.name, 2), SEM_INTERFACE);
         for (auto& C : P.classes) {
-            recordDecl(C.name, C.nameLine, C.nameCol, MT.values.count(C.name) ? MT.values[C.name] : tNamed(C.name, 0));
+            recordDecl(C.name, C.nameLine, C.nameCol, MT.values.count(C.name) ? MT.values[C.name] : tNamed(C.name, 0), SEM_CLASS);
             auto& ci = MT.classes[C.name];
-            for (auto& fld : C.fields) recordDecl(fld.name, fld.nameLine, fld.nameCol, ci.fields.count(fld.name) ? ci.fields[fld.name].first : tAny());
-            for (auto& mth : C.methods) recordDecl(mth.name, mth.nameLine, mth.nameCol, ci.methods.count(mth.name) ? ci.methods[mth.name].first : tAny());
+            for (auto& fld : C.fields) recordDecl(fld.name, fld.nameLine, fld.nameCol, ci.fields.count(fld.name) ? ci.fields[fld.name].first : tAny(), SEM_PROPERTY);
+            for (auto& mth : C.methods) recordDecl(mth.name, mth.nameLine, mth.nameCol, ci.methods.count(mth.name) ? ci.methods[mth.name].first : tAny(), SEM_METHOD);
         }
     }
     void recordName(Expr* e, const Binding& b, Env& env) {
         if (!recordOcc || !e || e->line <= 0) return;
         Occ o; o.occMod = curm; o.line = e->line; o.col = e->col; o.len = (int)e->sval.size(); o.name = e->sval; o.ty = b.ty;
+        o.sem = classifyValue(e->sval, b.ty);
         if (b.line > 0) { o.defMod = curm; o.defLine = b.line; o.defCol = b.col; }   // a local/param/loop var with a known declaration site
         else if (!inEnv(e->sval, env)) {                            // not a local -> resolve a top-level or imported definition
             if (!topDef(curm, e->sval, o)) { auto s = sel.find(e->sval); if (s != sel.end()) topDef(s->second.first, s->second.second, o); }
@@ -353,7 +369,7 @@ struct TypeChecker {
         } else if (o->k == Ty::ANY || o->k == Ty::TVAR) {
             // dynamic / unbounded receiver: result stays Any
         } else err(lineOf(e), "cannot access '." + field + "' on '" + tStr(o) + "'");
-        if (rec) { oc.ty = result; occs.push_back(std::move(oc)); }
+        if (rec) { oc.ty = result; oc.sem = (result && result->k == Ty::FUNC) ? SEM_METHOD : SEM_PROPERTY; occs.push_back(std::move(oc)); }
         return result;
     }
     TyP inferCall(Expr* e, Env& env) {
@@ -441,16 +457,16 @@ struct TypeChecker {
     void checkStmts(std::vector<Stmt>& ss, Env& env) { env.push_back({}); for (auto& s : ss) checkStmt(s, env); env.pop_back(); }
     void checkStmt(Stmt& s, Env& env) {
         switch (s.k) {
-            case Stmt::VAR: { TyP t = s.hasExpr ? infer(s.expr.get(), env) : tAny(); if (s.vtype) { TyP d = resolveType(s.vtype, {}, curm); if (s.hasExpr && !assignable(t, d)) err(lineOf(s.expr.get()), "'" + s.name + "': cannot assign '" + tStr(t) + "' to declared '" + tStr(d) + "'"); t = d; } env.back()[s.name] = Binding(t, s.nameLine, s.nameCol); recordDecl(s.name, s.nameLine, s.nameCol, t); break; }
+            case Stmt::VAR: { TyP t = s.hasExpr ? infer(s.expr.get(), env) : tAny(); if (s.vtype) { TyP d = resolveType(s.vtype, {}, curm); if (s.hasExpr && !assignable(t, d)) err(lineOf(s.expr.get()), "'" + s.name + "': cannot assign '" + tStr(t) + "' to declared '" + tStr(d) + "'"); t = d; } env.back()[s.name] = Binding(t, s.nameLine, s.nameCol); recordDecl(s.name, s.nameLine, s.nameCol, t, SEM_VARIABLE); if (recordOcc && !s.vtype && s.hasExpr && s.nameLine > 0 && tStr(t) != "?") inlays.push_back({curm, s.nameLine, s.nameCol + (int)s.name.size(), ": " + tStr(t)}); break; }
             case Stmt::ASSIGN: { TyP lt = infer(s.target.get(), env); TyP rt = infer(s.expr.get(), env); if (!assignable(rt, lt)) err(lineOf(s.expr.get()), "cannot assign '" + tStr(rt) + "' to '" + tStr(lt) + "'"); break; }
             case Stmt::EXPR: infer(s.expr.get(), env); break;
             case Stmt::RET: { TyP rt = s.hasExpr ? infer(s.expr.get(), env) : tPrim("Void"); if (!assignable(rt, curRet)) err(s.hasExpr ? lineOf(s.expr.get()) : 0, "returning '" + tStr(rt) + "' from a function declared '-> " + tStr(curRet) + "'"); break; }
             case Stmt::IF: { expectBool(s.expr.get(), env); checkStmts(s.body, env); for (auto& br : s.elifs) { expectBool(br.first.get(), env); checkStmts(br.second, env); } if (s.hasElse) checkStmts(s.elseBody, env); break; }
             case Stmt::WHILE: { expectBool(s.expr.get(), env); loopDepth++; checkStmts(s.body, env); loopDepth--; break; }
-            case Stmt::FOR: { TyP it = infer(s.expr.get(), env); TyP el = it->k == Ty::LIST ? it->elem : tAny(); if (!(it->k == Ty::LIST || it->k == Ty::ANY || it->k == Ty::TVAR)) err(lineOf(s.expr.get()), "cannot iterate over '" + tStr(it) + "'"); recordDecl(s.name, s.nameLine, s.nameCol, el); env.push_back({ {s.name, Binding(el, s.nameLine, s.nameCol)} }); loopDepth++; checkStmts(s.body, env); loopDepth--; env.pop_back(); break; }
+            case Stmt::FOR: { TyP it = infer(s.expr.get(), env); TyP el = it->k == Ty::LIST ? it->elem : tAny(); if (!(it->k == Ty::LIST || it->k == Ty::ANY || it->k == Ty::TVAR)) err(lineOf(s.expr.get()), "cannot iterate over '" + tStr(it) + "'"); recordDecl(s.name, s.nameLine, s.nameCol, el, SEM_VARIABLE); env.push_back({ {s.name, Binding(el, s.nameLine, s.nameCol)} }); loopDepth++; checkStmts(s.body, env); loopDepth--; env.pop_back(); break; }
             case Stmt::BREAK: case Stmt::CONTINUE: if (loopDepth == 0) err(0, std::string(s.k == Stmt::BREAK ? "'break'" : "'continue'") + " used outside a loop"); break;
             case Stmt::RAISE: infer(s.expr.get(), env); break;
-            case Stmt::TRY: { checkStmts(s.body, env); recordDecl(s.name, s.nameLine, s.nameCol, tAny()); env.push_back({ {s.name, Binding(tAny(), s.nameLine, s.nameCol)} }); checkStmts(s.elseBody, env); env.pop_back(); break; }
+            case Stmt::TRY: { checkStmts(s.body, env); recordDecl(s.name, s.nameLine, s.nameCol, tAny(), SEM_VARIABLE); env.push_back({ {s.name, Binding(tAny(), s.nameLine, s.nameCol)} }); checkStmts(s.elseBody, env); env.pop_back(); break; }
             case Stmt::PASS: break;
         }
     }
@@ -461,7 +477,7 @@ struct TypeChecker {
         Bounds mb = f.bounds; if (!cls.empty()) for (auto& kv : T[curm].classes[cls].bounds) mb[kv.first] = kv.second; curBounds = &mb;
         curRet = f.retType ? resolveType(f.retType, g, curm) : tPrim("Void");
         Env env; env.push_back(builtins()); Scope sc; std::vector<TyP> selfArgs; for (auto& gn : cg) selfArgs.push_back(tVar(gn));
-        for (size_t k = 0; k < f.params.size(); k++) { if (f.params[k] == "self") sc["self"] = tNamed(cls, 0, selfArgs); else { TyP pt = f.ptypes[k] ? resolveType(f.ptypes[k], g, curm) : tAny(); auto pp = k < f.paramPos.size() ? f.paramPos[k] : std::make_pair(0, 0); sc[f.params[k]] = Binding(pt, pp.first, pp.second); recordDecl(f.params[k], pp.first, pp.second, pt); } }
+        for (size_t k = 0; k < f.params.size(); k++) { if (f.params[k] == "self") sc["self"] = tNamed(cls, 0, selfArgs); else { TyP pt = f.ptypes[k] ? resolveType(f.ptypes[k], g, curm) : tAny(); auto pp = k < f.paramPos.size() ? f.paramPos[k] : std::make_pair(0, 0); sc[f.params[k]] = Binding(pt, pp.first, pp.second); recordDecl(f.params[k], pp.first, pp.second, pt, SEM_PARAMETER); } }
         env.push_back(sc); checkStmts(f.body, env);
         curClass = pc; curRet = pr; loopDepth = pl; curBounds = pb;
     }
@@ -474,7 +490,7 @@ struct TypeChecker {
         if (C.hasCtor) {
             std::string pc = curClass; TyP pr = curRet; int pl = loopDepth; loopDepth = 0; curClass = C.name; curRet = tPrim("Void");
             Env env; env.push_back(builtins()); Scope sc; sc["self"] = tNamed(C.name, 0, selfArgs);
-            for (size_t k = 0; k < C.ctorParams.size(); k++) { TyP pt = C.ctorPtypes[k] ? resolveType(C.ctorPtypes[k], g, curm) : tAny(); auto pp = k < C.ctorParamPos.size() ? C.ctorParamPos[k] : std::make_pair(0, 0); sc[C.ctorParams[k]] = Binding(pt, pp.first, pp.second); recordDecl(C.ctorParams[k], pp.first, pp.second, pt); }
+            for (size_t k = 0; k < C.ctorParams.size(); k++) { TyP pt = C.ctorPtypes[k] ? resolveType(C.ctorPtypes[k], g, curm) : tAny(); auto pp = k < C.ctorParamPos.size() ? C.ctorParamPos[k] : std::make_pair(0, 0); sc[C.ctorParams[k]] = Binding(pt, pp.first, pp.second); recordDecl(C.ctorParams[k], pp.first, pp.second, pt, SEM_PARAMETER); }
             env.push_back(sc); checkStmts(C.ctorBody, env); curClass = pc; curRet = pr; loopDepth = pl;
         }
         curBounds = pbc; curSelf = pcs;
