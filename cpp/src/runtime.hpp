@@ -132,7 +132,7 @@ struct Runtime {
     std::vector<std::string> order;
     Program prog;
     std::vector<Value> globals;
-    std::string entryMod, error;
+    std::string entryMod, error, entryPath;
     bool loaded = false;
 
     // Expose a C++ function to scripts. params/ret are type names ("Int","Float","Void","Any",...).
@@ -140,9 +140,10 @@ struct Runtime {
         natives.add(name, {std::move(params), std::move(ret), variadic}, std::move(fn));
     }
     // Parse, type-check (with the FFI signatures), compile, and run module globals + init once. False on error.
-    bool load(const std::string& entryPath) {
+    bool load(const std::string& path) {
         try {
-            entryMod = loadModules(entryPath, mods, order);
+            entryPath = path;
+            entryMod = loadModules(path, mods, order);
             TypeChecker tc(mods, order); tc.natives = &natives; tc.build(); tc.check();
             if (!tc.errors.empty()) { error.clear(); for (auto& e : tc.errors) { error += std::get<0>(e); if (std::get<1>(e)) error += ":" + std::to_string(std::get<1>(e)); error += ": " + std::get<2>(e) + "\n"; } return false; }
             prog.natives = &natives;
@@ -153,6 +154,17 @@ struct Runtime {
             for (auto& m : order) if (initFunc.count(m)) execTop(prog, globals, initFunc[m]);
             loaded = true; return true;
         } catch (const std::exception& e) { error = e.what(); return false; }
+    }
+    // Hot reload: recompile the (possibly edited) script, preserving current module-global values by name.
+    bool reload() {
+        if (!loaded) return false;
+        std::map<std::string, Value> saved;
+        for (auto& kv : prog.syms[entryMod]) if (kv.second.kind == 3) saved[kv.first] = globals[kv.second.index];
+        std::string path = entryPath;
+        mods.clear(); order.clear(); prog = Program{}; globals.clear(); loaded = false;
+        if (!load(path)) return false;
+        for (auto& kv : saved) { auto it = prog.syms[entryMod].find(kv.first); if (it != prog.syms[entryMod].end() && it->second.kind == 3) globals[it->second.index] = kv.second; }
+        return true;
     }
     bool has(const std::string& fn) { return loaded && prog.syms[entryMod].count(fn) && prog.syms[entryMod][fn].kind == 0; }
     // Invoke a script function (state persists in globals across calls -- e.g. tick update(dt) each frame).

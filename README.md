@@ -146,6 +146,7 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O, a math/game stdlib (`sqrt`/`sin`/`lerp`/`clamp`/`random`/…)
 - ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `cpp/examples/coroutine.rg`, `game.rg`
 - ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`)
+- ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a library from first-class functions; `cpp/examples/signals.rg`)
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
 - ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a lexer (streams tokens; reads a file + builds a token list) and a full tokenize→parse→eval pipeline over a recursive enum AST
 - ⏳ future: port the full compiler to RoseGold (true self-hosting); trait default-method bodies; primitives implementing built-in traits
