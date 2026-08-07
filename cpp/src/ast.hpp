@@ -10,7 +10,7 @@ using TyNodeP = std::shared_ptr<TyNode>;
 struct Pattern { int k = 0; std::unique_ptr<Expr> lit; std::string name; std::vector<std::string> binds; };
 struct Arm { std::vector<Pattern> pats; std::unique_ptr<Expr> body; };
 struct Expr {
-    enum K { INT, FLT, STR, BOOL, NAME, UNARY, BINARY, CALL, LIST, INDEX, MEMBER, MATCH, CLOSURE } k;
+    enum K { INT, FLT, STR, BOOL, NAME, UNARY, BINARY, CALL, LIST, INDEX, MEMBER, MATCH, CLOSURE, YIELD } k;
     int64_t ival = 0; double dval = 0; bool bval = false;
     std::string sval, op;
     std::unique_ptr<Expr> lhs, rhs;

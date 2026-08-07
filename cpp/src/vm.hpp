@@ -19,14 +19,17 @@ static Value arith(Op op, const Value& a, const Value& b) {
 static bool valueEq(const Value& a, const Value& b) { if (isNum(a) && isNum(b)) return asNum(a) == asNum(b); return a == b; }
 struct Frame { CFunc* fn; int ip; int base; };
 struct Handler { int catchIp; size_t frameDepth; size_t stackSize; };
+// A coroutine keeps its own value/frame/handler stacks so it can be paused mid-execution and resumed.
+struct Coro { Value fn; std::vector<Value> args; std::vector<Value> st; std::vector<Frame> frames; std::vector<Handler> handlers; int status = 0; };  // 0 fresh, 1 suspended, 2 dead
+struct YieldSignal { Value value; };   // thrown by `yield`, caught by resume() (unwinds only the coroutine's runLoop)
 
-static void execTop(Program& prog, std::vector<Value>& globals, int startIndex) {
-    std::vector<Value> st; std::vector<Frame> frames; std::vector<Handler> handlers;
+// Runs `frames` (with value stack `st`) to completion, returning the top-of-stack result;
+// throws YieldSignal on `yield`. Re-entrant: resume() calls it on a coroutine's own stacks.
+static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Value>& st, std::vector<Frame>& frames, std::vector<Handler>& handlers) {
     auto call = [&](int fi, int argc) { CFunc* fn = &prog.funcs[fi]; int base = (int)st.size() - argc; while ((int)st.size() < base + fn->nlocals) st.push_back(Value{}); frames.push_back({fn, 0, base}); };
     auto asList = [&](const Value& v) -> ListObj& { if (auto p = std::get_if<std::shared_ptr<ListObj>>(&v)) return **p; throw VMError("expected a list"); };
     auto asInst = [&](const Value& v) -> Instance& { if (auto p = std::get_if<std::shared_ptr<Instance>>(&v)) return **p; throw VMError("expected an object"); };
     auto asMap = [&](const Value& v) -> MapObj& { if (auto p = std::get_if<std::shared_ptr<MapObj>>(&v)) return **p; throw VMError("expected a map"); };
-    call(startIndex, 0);
     while (!frames.empty()) {
         Frame& fr = frames.back(); Instr in = fr.fn->code[fr.ip++];
         switch (in.op) {
@@ -116,11 +119,39 @@ static void execTop(Program& prog, std::vector<Value>& globals, int startIndex) 
                 else if (in.a == 33) { st.push_back(Value{rngFloat()}); }
                 else if (in.a == 34) { Value hv = st.back(); st.pop_back(); Value lv = st.back(); st.pop_back(); int64_t lo = std::get<int64_t>(lv), hi = std::get<int64_t>(hv); if (hi < lo) std::swap(lo, hi); st.push_back(Value{lo + (int64_t)(rngNext() % (uint64_t)(hi - lo + 1))}); }
                 else if (in.a == 35) { Value s = st.back(); st.pop_back(); uint64_t seed = (uint64_t)std::get<int64_t>(s); g_rng = seed ? seed : 1; st.push_back(Value{}); }
+                else if (in.a == 36) { std::vector<Value> vals(argc); for (int k = argc - 1; k >= 0; k--) { vals[k] = st.back(); st.pop_back(); } auto c = std::make_shared<Coro>(); c->fn = vals.empty() ? Value{} : vals[0]; if (vals.size() > 1) c->args.assign(vals.begin() + 1, vals.end()); st.push_back(Value{c}); }
+                else if (in.a == 37) {   // resume(coro [, arg])
+                    Value arg{}; if (argc >= 2) { arg = st.back(); st.pop_back(); }
+                    Value cv = st.back(); st.pop_back();
+                    auto p = std::get_if<std::shared_ptr<Coro>>(&cv); if (!p) throw VMError("resume() expects a coroutine");
+                    Coro& C = **p; Value result{};
+                    if (C.status != 2) {
+                        if (C.status == 0) {   // fresh: start the coroutine function on its own stacks
+                            auto cl = std::get_if<std::shared_ptr<Closure>>(&C.fn); if (!cl) throw VMError("coroutine() expects a function");
+                            for (auto& u : (*cl)->upvals) C.st.push_back(u);
+                            for (auto& a : C.args) C.st.push_back(a);
+                            CFunc* f = &prog.funcs[(*cl)->fn]; int cbase = (int)C.st.size() - (int)((*cl)->upvals.size() + C.args.size());
+                            while ((int)C.st.size() < cbase + f->nlocals) C.st.push_back(Value{});
+                            C.frames.push_back({f, 0, cbase}); C.status = 1;
+                        } else C.st.push_back(arg);   // resume: the yield expression evaluates to arg
+                        try { result = runLoop(prog, globals, C.st, C.frames, C.handlers); C.status = 2; }
+                        catch (YieldSignal& y) { result = y.value; }   // still suspended; C's stacks are preserved
+                    }
+                    st.push_back(result);
+                }
+                else if (in.a == 38) { Value cv = st.back(); st.pop_back(); auto p = std::get_if<std::shared_ptr<Coro>>(&cv); st.push_back(Value{p ? ((*p)->status == 2) : true}); }
                 break;
             }
+            case Op::YIELD: { Value v = st.back(); st.pop_back(); throw YieldSignal{v}; }
             case Op::CALL: call(in.a, in.b); break;
             case Op::RET: { Value ret = st.back(); st.pop_back(); int base = frames.back().base; frames.pop_back(); st.resize(base); st.push_back(ret); break; }
         }
     }
+    return st.empty() ? Value{} : st.back();
+}
+static void execTop(Program& prog, std::vector<Value>& globals, int startIndex) {
+    std::vector<Value> st; std::vector<Frame> frames; std::vector<Handler> handlers;
+    CFunc* fn = &prog.funcs[startIndex]; while ((int)st.size() < fn->nlocals) st.push_back(Value{}); frames.push_back({fn, 0, 0});
+    runLoop(prog, globals, st, frames, handlers);
 }
 

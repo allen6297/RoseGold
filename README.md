@@ -55,6 +55,8 @@ loading. The formal grammar is `grammar.ebnf`, the module spec `resolution.md`.
 - Control flow: `if/elif/else`, `while`, `for..in`, `break`, `continue`
 - Lists with indexing `a[i]` (get and assign)
 - Error handling: `raise <expr>` / `try: ... catch e: ...`
+- Coroutines: `yield <expr>` inside a function; `coroutine(fn, args...)` / `resume(coro[, arg])` / `done(coro)` — pause and continue across frames
+- Game/math stdlib: `sqrt sin cos tan atan2 floor ceil round pow abs min max lerp clamp random randint srandom`
 - Load-time `init:` block per module (runs once, dependencies first); programs start at `main()`
 - Modules: `module a.b`, `import m`, `import m as x`, `import m.(a, b)`, `pub import m`
 - File extension: `.rg`
@@ -141,7 +143,8 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ `init:` load-time execution model + `main()` entry
 - ✅ native compiler + runtime — self-contained C++ (`cpp/`): typed parser + static type checker + bytecode VM, at **full parity** with Python (byte-identical output; identical type errors)
 - ✅ editor support — a native **language server** (`rosegoldc --lsp`): diagnostics, hover, go-to-definition (incl. locals/params), completion, document symbols/outline, signature help, workspace-wide find-references + rename, semantic tokens, document highlight, folding, and inlay hints. Clients: **VS Code** extension (`editors/vscode/`) and a **JetBrains** plugin (`editors/jetbrains/`, via LSP4IJ) — both drive the same server
-- ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O
+- ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O, a math/game stdlib (`sqrt`/`sin`/`lerp`/`clamp`/`random`/…)
+- ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `cpp/examples/coroutine.rg`, `game.rg`
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
 - ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a lexer (streams tokens; reads a file + builds a token list) and a full tokenize→parse→eval pipeline over a recursive enum AST
 - ⏳ future: port the full compiler to RoseGold (true self-hosting); trait default-method bodies; primitives implementing built-in traits

@@ -4,11 +4,11 @@
 // ---------------------------------------------------------------------
 // Value
 // ---------------------------------------------------------------------
-struct ListObj; struct Instance; struct VariantVal; struct Closure; struct MapObj;
+struct ListObj; struct Instance; struct VariantVal; struct Closure; struct MapObj; struct Coro;
 using Value = std::variant<std::monostate, int64_t, double, bool, std::string,
                            std::shared_ptr<ListObj>, std::shared_ptr<Instance>,
                            std::shared_ptr<VariantVal>, std::shared_ptr<Closure>,
-                           std::shared_ptr<MapObj>>;
+                           std::shared_ptr<MapObj>, std::shared_ptr<Coro>>;
 struct ListObj { std::vector<Value> items; };
 struct Instance { std::string cls; int clsIndex; std::map<std::string, Value> fields; };
 struct VariantVal { std::string enumName, name; std::vector<Value> vals; };
@@ -62,6 +62,7 @@ static std::string toStr(const Value& v) {
         return s;
     }
     if (std::holds_alternative<std::shared_ptr<Closure>>(v)) return "<func>";
+    if (std::holds_alternative<std::shared_ptr<Coro>>(v)) return "<coroutine>";
     if (auto p = std::get_if<std::shared_ptr<MapObj>>(&v)) {
         std::string s = "{";
         for (size_t i = 0; i < (*p)->items.size(); i++) { if (i) s += ", "; s += toStr((*p)->items[i].first) + ": " + toStr((*p)->items[i].second); }

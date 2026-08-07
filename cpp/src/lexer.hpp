@@ -10,7 +10,7 @@ static const std::vector<std::string> KEYWORDS = {
     "module", "import", "as", "pub", "internal", "private", "static",
     "func", "var", "const", "return", "pass",
     "if", "elif", "else", "while", "for", "in",
-    "break", "continue", "try", "catch", "raise",
+    "break", "continue", "try", "catch", "raise", "yield",
     "class", "trait", "enum", "init", "match", "extends", "extend", "uses", "true", "false"};
 static bool isKw(const std::string& s) { for (auto& k : KEYWORDS) if (k == s) return true; return false; }
 struct LexError : std::runtime_error { using std::runtime_error::runtime_error; };

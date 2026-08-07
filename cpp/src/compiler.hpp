@@ -10,7 +10,7 @@ enum class Op {
     ADD, SUB, MUL, DIV, MOD, NEG, NOT, LT, LE, GT, GE, EQ, NE,
     JUMP, JFALSE, JTRUE, MAKELIST, IGET, ISET,
     NEWOBJ, GETPROP, SETPROP, INVOKE, MKVARIANT, ISVARIANT, VGET,
-    MKCLOSURE, CALLV, SETUP_TRY, POP_TRY, RAISE, CALL, BUILTIN, RET
+    MKCLOSURE, CALLV, SETUP_TRY, POP_TRY, RAISE, YIELD, CALL, BUILTIN, RET
 };
 struct Instr { Op op; int a = 0; int b = 0; };
 struct CFunc { std::string name; int nlocals = 0; std::vector<Instr> code; };
@@ -138,6 +138,7 @@ struct Compiler {
             case Expr::MATCH: match(e); break;
             case Expr::CLOSURE: closure(e); break;
             case Expr::CALL: call(e); break;
+            case Expr::YIELD: expr(*e.lhs); emit(Op::YIELD); break;   // yield value; resume-arg becomes this expr's value
         }
     }
 
@@ -184,7 +185,8 @@ struct Compiler {
         auto lit = locals.find(name);
         if (lit != locals.end()) { emit(Op::LOAD, lit->second); for (auto& a : e.args) expr(*a); emit(Op::CALLV, argc); return; }
         static const std::map<std::string, int> BI = { {"print", 0}, {"len", 1}, {"range", 2}, {"push", 3}, {"pop", 4}, {"str", 5}, {"ord", 6}, {"chr", 7}, {"substr", 8}, {"split", 9}, {"int", 10}, {"readFile", 11}, {"writeFile", 12}, {"map", 13}, {"set", 14}, {"get", 15}, {"has", 16}, {"keys", 17}, {"remove", 18},
-            {"sqrt", 19}, {"sin", 20}, {"cos", 21}, {"tan", 22}, {"atan2", 23}, {"floor", 24}, {"ceil", 25}, {"round", 26}, {"pow", 27}, {"abs", 28}, {"min", 29}, {"max", 30}, {"lerp", 31}, {"clamp", 32}, {"random", 33}, {"randint", 34}, {"srandom", 35} };
+            {"sqrt", 19}, {"sin", 20}, {"cos", 21}, {"tan", 22}, {"atan2", 23}, {"floor", 24}, {"ceil", 25}, {"round", 26}, {"pow", 27}, {"abs", 28}, {"min", 29}, {"max", 30}, {"lerp", 31}, {"clamp", 32}, {"random", 33}, {"randint", 34}, {"srandom", 35},
+            {"coroutine", 36}, {"resume", 37}, {"done", 38} };
         auto bi = BI.find(name); if (bi != BI.end()) { for (auto& a : e.args) expr(*a); emit(Op::BUILTIN, bi->second, argc); return; }
         Sym s;
         if (resolveUn(name, s)) {

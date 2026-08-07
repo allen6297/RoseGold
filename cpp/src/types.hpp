@@ -306,6 +306,8 @@ struct TypeChecker {
         b["abs"] = tFunc({tVar("N")}, tVar("N")); b["min"] = tFunc({tVar("N"), tVar("N")}, tVar("N")); b["max"] = tFunc({tVar("N"), tVar("N")}, tVar("N"));
         b["lerp"] = tFunc({tVar("N"), tVar("N"), tVar("N")}, tPrim("Float")); b["clamp"] = tFunc({tVar("N"), tVar("N"), tVar("N")}, tVar("N"));
         b["random"] = tFunc({}, tPrim("Float")); b["randint"] = tFunc({tPrim("Int"), tPrim("Int")}, tPrim("Int")); b["srandom"] = tFunc({tPrim("Int")}, tPrim("Void"));
+        // coroutines: coroutine(fn) -> a coroutine; resume(coro[, arg]) runs to the next yield/return; done(coro) -> Bool
+        b["coroutine"] = tFunc({tAny()}, tAny(), true); b["resume"] = tFunc({tAny()}, tAny(), true); b["done"] = tFunc({tAny()}, tPrim("Bool"));
         return b;
     }
     Binding lookup(const std::string& name, Env& env) {
@@ -341,6 +343,7 @@ struct TypeChecker {
             case Expr::INDEX: { TyP ot = infer(e->lhs.get(), env); TyP it = infer(e->rhs.get(), env); if (!assignable(it, tPrim("Int"))) err(lineOf(e), "index must be 'Int', got '" + tStr(it) + "'"); if (ot->k == Ty::LIST) return ot->elem; if (ot->k == Ty::ANY || ot->k == Ty::TVAR) return tAny(); if (ot->k == Ty::PRIM && ot->name == "String") return tPrim("String"); err(lineOf(e), "cannot index '" + tStr(ot) + "'"); return tAny(); }
             case Expr::MATCH: return inferMatch(e, env);
             case Expr::CLOSURE: return inferClosure(e, env);
+            case Expr::YIELD: { infer(e->lhs.get(), env); return tAny(); }   // value passed back in by resume()
         }
         return tAny();
     }

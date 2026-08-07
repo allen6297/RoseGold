@@ -135,7 +135,10 @@ struct Parser {
     ExprP cmpE() { return binL({"<", "<=", ">", ">="}, &Parser::addE); }
     ExprP addE() { return binL({"+", "-"}, &Parser::mulE); }
     ExprP mulE() { return binL({"*", "/", "%"}, &Parser::unaryE); }
-    ExprP unaryE() { if (isOp("!") || isOp("-")) { std::string op = next().s; auto e = std::make_unique<Expr>(); e->k = Expr::UNARY; e->op = op; e->lhs = unaryE(); return e; } return postfixE(); }
+    ExprP unaryE() {
+        if (isKw("yield")) { Token t = peek(); i++; auto y = std::make_unique<Expr>(); y->k = Expr::YIELD; y->line = t.line; y->col = t.col; y->lhs = expr(); return y; }   // `yield v`: suspend, resume-arg is the value
+        if (isOp("!") || isOp("-")) { std::string op = next().s; auto e = std::make_unique<Expr>(); e->k = Expr::UNARY; e->op = op; e->lhs = unaryE(); return e; } return postfixE();
+    }
     ExprP postfixE() {
         ExprP e = primaryE();
         while (true) {
