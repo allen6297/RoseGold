@@ -20,3 +20,6 @@ __pycache__/
 
 # IntelliJ Platform Gradle plugin state
 editors/jetbrains/.intellijPlatform/
+
+# Embedding demo binary
+cpp/embed/engine

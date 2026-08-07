@@ -1,5 +1,6 @@
 #pragma once
 #include "ast.hpp"
+#include "ffi.hpp"
 
 // ---------------------------------------------------------------------
 // Static type checker (front-end gate)
@@ -57,6 +58,7 @@ struct TypeChecker {
     std::map<std::string, std::string> qual; std::map<std::string, std::pair<std::string, std::string>> sel;
     std::vector<Occ> occs; bool recordOcc = false;   // LSP index (populated only when recordOcc)
     std::vector<InlayH> inlays;                       // inferred-type hints on un-annotated vars
+    NativeRegistry* natives = nullptr;                // host FFI signatures (embedding), or null
     TypeChecker(std::map<std::string, Parsed>& m, std::vector<std::string>& o) : mods(m), order(o) {}
 
     // An environment binding: a value's type plus, for locals/params/loop vars, its 1-based declaration site
@@ -285,6 +287,16 @@ struct TypeChecker {
         return r;
     }
 
+    // Resolve a native-signature type name (Int/Float/String/Bool/Void/List/Map/Any or a class/enum/trait) to a Ty.
+    TyP nativeTy(const std::string& n) {
+        if (n == "Int" || n == "Float" || n == "String" || n == "Bool" || n == "Void") return tPrim(n);
+        if (n == "List") return tList(tAny());
+        if (n == "Map") return tMap(tAny(), tAny());
+        if (T[curm].classes.count(n)) return tNamed(n, 0);
+        if (T[curm].enums.count(n)) return tNamed(n, 1);
+        if (T[curm].traits.count(n)) return tNamed(n, 2);
+        return tAny();
+    }
     Scope builtins() {
         Scope b;
         b["print"] = tFunc({}, tPrim("Void"), true); b["len"] = tFunc({tAny()}, tPrim("Int")); b["range"] = tFunc({tPrim("Int")}, tList(tPrim("Int")));
@@ -308,6 +320,7 @@ struct TypeChecker {
         b["random"] = tFunc({}, tPrim("Float")); b["randint"] = tFunc({tPrim("Int"), tPrim("Int")}, tPrim("Int")); b["srandom"] = tFunc({tPrim("Int")}, tPrim("Void"));
         // coroutines: coroutine(fn) -> a coroutine; resume(coro[, arg]) runs to the next yield/return; done(coro) -> Bool
         b["coroutine"] = tFunc({tAny()}, tAny(), true); b["resume"] = tFunc({tAny()}, tAny(), true); b["done"] = tFunc({tAny()}, tPrim("Bool"));
+        if (natives) for (auto& e : natives->entries) { std::vector<TyP> ps; for (auto& p : e.sig.params) ps.push_back(nativeTy(p)); b[e.name] = tFunc(ps, nativeTy(e.sig.ret), e.sig.variadic); }
         return b;
     }
     Binding lookup(const std::string& name, Env& env) {

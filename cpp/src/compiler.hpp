@@ -1,6 +1,7 @@
 #pragma once
 #include "value.hpp"
 #include "ast.hpp"
+#include "ffi.hpp"
 
 // ---------------------------------------------------------------------
 // Bytecode + Compiler
@@ -10,7 +11,7 @@ enum class Op {
     ADD, SUB, MUL, DIV, MOD, NEG, NOT, LT, LE, GT, GE, EQ, NE,
     JUMP, JFALSE, JTRUE, MAKELIST, IGET, ISET,
     NEWOBJ, GETPROP, SETPROP, INVOKE, MKVARIANT, ISVARIANT, VGET,
-    MKCLOSURE, CALLV, SETUP_TRY, POP_TRY, RAISE, YIELD, CALL, BUILTIN, RET
+    MKCLOSURE, CALLV, SETUP_TRY, POP_TRY, RAISE, YIELD, CALL, BUILTIN, NATIVE, RET
 };
 struct Instr { Op op; int a = 0; int b = 0; };
 struct CFunc { std::string name; int nlocals = 0; std::vector<Instr> code; };
@@ -22,6 +23,7 @@ struct Program {
     std::vector<ClassDesc> classes; std::vector<VDesc> variants;
     std::map<std::string, std::map<std::string, Sym>> syms;   // module -> name -> sym
     std::map<std::string, std::map<std::string, int>> extensions;   // type tag (Int/Float/String/Bool/List/Map) -> method -> funcIndex
+    NativeRegistry* natives = nullptr;   // host-registered native functions (FFI), or null for the plain CLI
 };
 struct ModuleCtx {
     std::string name; std::map<std::string, Sym>* sym = nullptr;
@@ -188,6 +190,7 @@ struct Compiler {
             {"sqrt", 19}, {"sin", 20}, {"cos", 21}, {"tan", 22}, {"atan2", 23}, {"floor", 24}, {"ceil", 25}, {"round", 26}, {"pow", 27}, {"abs", 28}, {"min", 29}, {"max", 30}, {"lerp", 31}, {"clamp", 32}, {"random", 33}, {"randint", 34}, {"srandom", 35},
             {"coroutine", 36}, {"resume", 37}, {"done", 38} };
         auto bi = BI.find(name); if (bi != BI.end()) { for (auto& a : e.args) expr(*a); emit(Op::BUILTIN, bi->second, argc); return; }
+        if (prog.natives) { int ni = prog.natives->find(name); if (ni >= 0) { for (auto& a : e.args) expr(*a); emit(Op::NATIVE, ni, argc); return; } }   // host FFI
         Sym s;
         if (resolveUn(name, s)) {
             if (s.kind == 3) { emit(Op::LOADG, s.index); for (auto& a : e.args) expr(*a); emit(Op::CALLV, argc); return; }

@@ -143,6 +143,7 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
                 break;
             }
             case Op::YIELD: { Value v = st.back(); st.pop_back(); throw YieldSignal{v}; }
+            case Op::NATIVE: { int argc = in.b; std::vector<Value> args(argc); for (int k = argc - 1; k >= 0; k--) { args[k] = st.back(); st.pop_back(); } st.push_back(prog.natives->entries[in.a].fn(args)); break; }
             case Op::CALL: call(in.a, in.b); break;
             case Op::RET: { Value ret = st.back(); st.pop_back(); int base = frames.back().base; frames.pop_back(); st.resize(base); st.push_back(ret); break; }
         }
