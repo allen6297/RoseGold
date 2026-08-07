@@ -570,6 +570,7 @@ struct TypeChecker {
             for (auto& X : P.extensions) checkExtensions(X);
             for (auto& C : P.classes) checkClass(C);
             for (auto& g : P.globals) if (g.hasExpr) { Env env; env.push_back(builtins()); TyP t = infer(g.expr.get(), env); if (g.vtype) { TyP d = resolveType(g.vtype, {}, curm); if (!assignable(t, d)) err(lineOf(g.expr.get()), "'" + g.name + "': cannot assign '" + tStr(t) + "' to '" + tStr(d) + "'"); } }
+            if (P.hasInit) { std::string pc = curClass; TyP pr = curRet; curClass = ""; curRet = tPrim("Void"); Env env; env.push_back(builtins()); checkStmts(P.initBody, env); curClass = pc; curRet = pr; }
         }
         std::sort(errors.begin(), errors.end());
     }

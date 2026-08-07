@@ -23,6 +23,9 @@
     <lang.syntaxHighlighterFactory
         language="RoseGold"
         implementationClass="dev.rosegold.RoseGoldSyntaxHighlighterFactory"/>
+    <lang.parserDefinition
+        language="RoseGold"
+        implementationClass="dev.rosegold.RoseGoldParserDefinition"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">

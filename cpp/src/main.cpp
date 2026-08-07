@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
         }
         if (checkOnly) return 0;   // front-end gate passed; skip execution
 
-        Program prog; std::map<std::string, int> globalsFunc;
+        Program prog; std::map<std::string, int> globalsFunc, initFunc;
         std::map<std::string, std::vector<std::pair<int, Func*>>> modDefaults;   // module -> (funcIndex, default trait method) to compile as class methods
         // Default trait methods a class inherits (walking `uses` transitively), not overridden by the class.
         auto classDefaults = [](Parsed& P, ClassAst& C, std::vector<std::pair<std::string, Func*>>& out) {
@@ -106,6 +106,7 @@ int main(int argc, char** argv) {
                 }
             }
             if (!P.globals.empty()) { globalsFunc[m] = (int)prog.funcs.size(); prog.funcs.push_back({m + "::$globals"}); }
+            if (P.hasInit) { initFunc[m] = (int)prog.funcs.size(); prog.funcs.push_back({m + "::$init"}); }
         }
         // compile pass
         Compiler comp(prog);
@@ -122,11 +123,13 @@ int main(int argc, char** argv) {
             for (size_t ci0 = 0; ci0 < P.classes.size(); ci0++) comp.compileClass(P.classes[ci0], (*ctx.sym)[P.classes[ci0].name].index);
             for (auto& d : modDefaults[m]) comp.compileMethod(d.first, *d.second);   // inherited default trait method bodies
             if (globalsFunc.count(m)) comp.compileGlobals(globalsFunc[m], P.globals);
+            if (initFunc.count(m)) comp.compileStmtList(initFunc[m], P.initBody);
             comp.drainPending();
         }
         // run: each module's globals in dep order, then entry main
         std::vector<Value> globals(prog.nglobals);
         for (auto& m : order) if (globalsFunc.count(m)) execTop(prog, globals, globalsFunc[m]);
+        for (auto& m : order) if (initFunc.count(m)) execTop(prog, globals, initFunc[m]);   // load-time init blocks, dependencies first
         auto mainSym = prog.syms[entryName].find("main");
         if (mainSym == prog.syms[entryName].end()) throw VMError("entry module '" + entryName + "' has no func main()");
         execTop(prog, globals, mainSym->second.index);

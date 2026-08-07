@@ -5,7 +5,9 @@ import com.intellij.openapi.fileTypes.LanguageFileType
 import com.intellij.psi.tree.IElementType
 import javax.swing.Icon
 
-object RoseGoldLanguage : Language("RoseGold")
+object RoseGoldLanguage : Language("RoseGold") {
+    private fun readResolve(): Any = RoseGoldLanguage
+}
 
 object RoseGoldFileType : LanguageFileType(RoseGoldLanguage) {
     override fun getName() = "RoseGold file"

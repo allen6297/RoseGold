@@ -204,6 +204,7 @@ struct Parser {
             else if (isKw("extend")) { p.extensions.push_back(extendDecl()); }
             else if (isKw("enum")) { EnumAst e = enumDecl(); e.vis = tv; p.enums.push_back(std::move(e)); }
             else if (isKw("var") || isKw("const")) { Stmt g = varStmt(); g.vis = tv; p.globals.push_back(std::move(g)); }
+            else if (isKw("init")) { i++; auto body = suite(); for (auto& s : body) p.initBody.push_back(std::move(s)); p.hasInit = true; }   // load-time module init block
             else err("unexpected top-level construct");
             skipNL();
         }

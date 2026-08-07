@@ -61,6 +61,7 @@ struct Compiler {
     void endFunc() { emit(Op::PUSHNIL); emit(Op::RET); CF().nlocals = nextSlot; }
 
     void compileFunc(int fi, Func& f) { beginFunc(fi, f.params); for (auto& s : f.body) stmt(s); endFunc(); }
+    void compileStmtList(int fi, std::vector<Stmt>& body) { beginFunc(fi, {}); for (auto& s : body) stmt(s); endFunc(); }   // e.g. a module `init:` block
     void compileMethod(int fi, Func& f) { beginFunc(fi, f.params); for (auto& s : f.body) stmt(s); endFunc(); }
     void compileClass(ClassAst& C, int ci) {
         for (auto& m : C.methods) compileMethod(prog.classes[ci].methods[m.name], m);

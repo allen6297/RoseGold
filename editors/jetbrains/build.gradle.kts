@@ -34,3 +34,7 @@ intellijPlatform {
         }
     }
 }
+
+// Optional settings-search pre-index; it launches a headless IDE and is flaky. The
+// IDE builds the index on demand, so skip it.
+tasks.buildSearchableOptions { enabled = false }
