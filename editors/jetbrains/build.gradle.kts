@@ -5,17 +5,19 @@ plugins {
 }
 
 group = "dev.rosegold"
-version = "0.1.0"
+version = "0.3.0"
 
 repositories {
     mavenCentral()
-    intellijPlatform { defaultRepositories() }
+    intellijPlatform { defaultRepositories() }   // includes the JetBrains Marketplace (for LSP4IJ)
 }
 
 dependencies {
     intellijPlatform {
         // IDEA 2024.2 runs on JBR 21, matching the jvmToolchain below.
         intellijIdeaCommunity("2024.2")
+        // LSP4IJ: the open-source library that runs a language server inside JetBrains IDEs.
+        plugin("com.redhat.devtools.lsp4ij:0.14.0")
         instrumentationTools()   // required by the :instrumentCode task
     }
 }

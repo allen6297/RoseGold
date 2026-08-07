@@ -4,10 +4,14 @@
   <vendor>RoseGold</vendor>
   <description><![CDATA[
     Language support for the RoseGold programming language (<code>.rg</code>):
-    syntax highlighting and live diagnostics from the native <code>rosegoldc --check</code>.
+    syntax highlighting plus full language features (diagnostics, hover,
+    go-to-definition, completion, references, rename, document symbols,
+    signature help, semantic highlighting, folding, inlay hints) via the native
+    <code>rosegoldc --lsp</code> language server, connected through LSP4IJ.
   ]]></description>
 
   <depends>com.intellij.modules.platform</depends>
+  <depends>com.redhat.devtools.lsp4ij</depends>
 
   <extensions defaultExtensionNs="com.intellij">
     <fileType
@@ -19,8 +23,15 @@
     <lang.syntaxHighlighterFactory
         language="RoseGold"
         implementationClass="dev.rosegold.RoseGoldSyntaxHighlighterFactory"/>
-    <externalAnnotator
+  </extensions>
+
+  <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
+    <server
+        id="rosegold"
+        name="RoseGold Language Server"
+        factoryClass="dev.rosegold.RoseGoldLspFactory"/>
+    <languageMapping
         language="RoseGold"
-        implementationClass="dev.rosegold.RoseGoldAnnotator"/>
+        serverId="rosegold"/>
   </extensions>
 </idea-plugin>
