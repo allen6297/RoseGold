@@ -18,7 +18,7 @@ func main():
 
 ```bash
 clang++ -std=c++17 -O2 -o cpp/rosegoldc cpp/src/main.cpp   # build once
-./cpp/rosegoldc demo/prog.rg                               # then run any .rg
+./cpp/rosegoldc examples/prog.rg                               # then run any .rg
 ```
 
 ## Pipeline
@@ -44,10 +44,10 @@ cpp/
   src/               the compiler + VM (one header per stage: value · lexer · ast ·
                      parser · types · compiler · vm) + main.cpp, plus ffi.hpp
                      (native FFI), runtime.hpp (embeddable runtime), lsp.hpp
-  examples/          single-file feature demos (.rg)
   embed/             C++ host-embedding demos (engine/game/hotreload) + their scripts
   test/              LSP protocol test drivers (Python)
-demo/                multi-file module-system fixtures + the flagship prog.rg
+examples/            .rg programs: feature demos, the flagship prog.rg, multi-file
+                     module fixtures (core/, graphics/), self-hosting fragments
 editors/
   vscode/            VS Code extension (LSP client)
   jetbrains/         IntelliJ / JetBrains plugin (LSP via LSP4IJ)
@@ -90,9 +90,9 @@ The Python reference (in `python-reference/`) exposes each stage separately if
 you want to inspect it: `python3 python-reference/parser.py <file>` (AST),
 `.../typecheck.py` (types), `.../interpreter.py` (run), etc.
 
-Examples live in `demo/` (multi-file module-system fixtures; `prog.rg` is the
-runnable flagship, `typeerrors.rg` has deliberate type errors) and
-`cpp/examples/` (single-file feature showcases: traits, coroutines, `game.rg`, …).
+All `.rg` programs live in `examples/`: the runnable flagship `prog.rg`, feature
+showcases (traits, coroutines, `game.rg`, …), multi-file module-system fixtures
+(`app.rg`/`util.rg`, `core/`, `graphics/`), and `typeerrors.rg` (deliberate type errors).
 
 ## Native runtime (C++)
 
@@ -102,7 +102,7 @@ stays the reference implementation.
 
 ```bash
 clang++ -std=c++17 -O2 -o cpp/rosegoldc cpp/src/main.cpp
-./cpp/rosegoldc demo/prog.rg      # the flagship: closures + modules + classes + enums
+./cpp/rosegoldc examples/prog.rg      # the flagship: closures + modules + classes + enums
 ```
 
 The VM now has **runtime parity** with the Python reference: functions +
@@ -111,12 +111,12 @@ recursion, global `var`/`const`, arithmetic/logic, `if`/`elif`/`else`, `while`,
 `raise`/`try`/`catch`, classes (fields/`init`/methods/`self`), enums + `match`,
 **closures** (first-class functions + capture), and **modules** (multi-file
 loading, `import` / `as` / selective, cross-module calls). The flagship
-`demo/prog.rg` and every example under `cpp/examples/` run **byte-identical**
+`examples/prog.rg` and every example under `examples/` run **byte-identical**
 under this VM and the Python interpreter. It also includes a **static type
 checker** (typed AST + generic inference + visibility) that gates execution, so
 `rosegoldc` is a complete, self-contained compiler + runtime with no Python
 dependency — and it reports the same type errors as the Python front-end
-(verified on `demo/typeerrors.rg`).
+(verified on `examples/typeerrors.rg`).
 
 ## Editor support
 
@@ -128,14 +128,14 @@ real name/visibility/type errors inline. See its README to load it.
 
 Fragments of RoseGold's own front-end, written in RoseGold and run natively
 (output byte-identical to the Python engine):
-- `cpp/examples/bootstrap.rg` — a lexer that streams tokens from an embedded string.
-- `cpp/examples/bootstrap2.rg` — a lexer that **reads a real `.rg` file** and builds a **token list**, using the standard library.
-- `cpp/examples/calc.rg` — a full **tokenize → recursive-descent parse → evaluate** pipeline for arithmetic, building a **recursive enum AST** and walking it with `match`. The "parser + AST + eval" milestone — the shape of the real front-end.
-- `cpp/examples/mini.rg` — the calc pipeline plus **statements and variables**, using `Map<String, Int>` as the environment.
-- `cpp/examples/interp.rg` — a **Turing-complete** little imperative language (`if` / `while` / comparisons / reassignment, `end`-delimited blocks) interpreted in RoseGold; runs real algorithms (factorial, summation) via nested-block recursion over the AST.
+- `examples/bootstrap.rg` — a lexer that streams tokens from an embedded string.
+- `examples/bootstrap2.rg` — a lexer that **reads a real `.rg` file** and builds a **token list**, using the standard library.
+- `examples/calc.rg` — a full **tokenize → recursive-descent parse → evaluate** pipeline for arithmetic, building a **recursive enum AST** and walking it with `match`. The "parser + AST + eval" milestone — the shape of the real front-end.
+- `examples/mini.rg` — the calc pipeline plus **statements and variables**, using `Map<String, Int>` as the environment.
+- `examples/interp.rg` — a **Turing-complete** little imperative language (`if` / `while` / comparisons / reassignment, `end`-delimited blocks) interpreted in RoseGold; runs real algorithms (factorial, summation) via nested-block recursion over the AST.
 
 ```bash
-./cpp/rosegoldc cpp/examples/bootstrap2.rg   # tokenizes cpp/examples/fib.rg -> 94 tokens
+./cpp/rosegoldc examples/bootstrap2.rg   # tokenizes examples/fib.rg -> 94 tokens
 ```
 
 ### Standard library
@@ -147,7 +147,7 @@ stay in lockstep:
 - **strings** — `str`, `ord`, `chr`, `substr`, `split`, `int`
 - **file I/O** — `readFile`, `writeFile`
 
-`cpp/examples/stdlib.rg` and `cpp/examples/maps.rg` exercise them. This clears
+`examples/stdlib.rg` and `examples/maps.rg` exercise them. This clears
 the blockers that stood in the way of self-hosting — **file I/O**, **growable
 lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 (large) work of porting the compiler itself to RoseGold on top of the stdlib.
@@ -163,9 +163,9 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ native compiler + runtime — self-contained C++ (`cpp/`): typed parser + static type checker + bytecode VM, at **full parity** with Python (byte-identical output; identical type errors)
 - ✅ editor support — a native **language server** (`rosegoldc --lsp`): diagnostics, hover, go-to-definition (incl. locals/params), completion, document symbols/outline, signature help, workspace-wide find-references + rename, semantic tokens, document highlight, folding, and inlay hints. Clients: **VS Code** extension (`editors/vscode/`) and a **JetBrains** plugin (`editors/jetbrains/`, via LSP4IJ) — both drive the same server
 - ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O, a math/game stdlib (`sqrt`/`sin`/`lerp`/`clamp`/`random`/…)
-- ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `cpp/examples/coroutine.rg`, `game.rg`
+- ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `examples/coroutine.rg`, `game.rg`
 - ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`)
-- ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a library from first-class functions; `cpp/examples/signals.rg`)
+- ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a library from first-class functions; `examples/signals.rg`)
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
 - ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a lexer (streams tokens; reads a file + builds a token list) and a full tokenize→parse→eval pipeline over a recursive enum AST
 - ⏳ future: port the full compiler to RoseGold (true self-hosting); trait default-method bodies; primitives implementing built-in traits

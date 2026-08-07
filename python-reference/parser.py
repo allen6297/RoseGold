@@ -3,7 +3,7 @@
 Reference parser for RoseGold (colon + indentation), following grammar.ebnf.
 
 Usage:
-    python3 parser.py [source_file]      # defaults to demo/prog.rg
+    python3 parser.py [source_file]      # defaults to examples/prog.rg
 
 It tokenizes the source, builds an AST via recursive descent, and either
 prints the AST and "OK", or reports the first syntax error with location.
@@ -867,7 +867,7 @@ def dump(n, indent=0):
 # ----------------------------------------------------------------------
 
 def main():
-    path = sys.argv[1] if len(sys.argv) > 1 else "demo/prog.rg"
+    path = sys.argv[1] if len(sys.argv) > 1 else "examples/prog.rg"
     with open(path, "r") as f:
         src = f.read()
 

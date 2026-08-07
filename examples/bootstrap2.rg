@@ -80,10 +80,10 @@ class Lexer:
         return self.toks
 
 func main():
-    var src = readFile("cpp/examples/fib.rg")
+    var src = readFile("examples/fib.rg")
     var lx = Lexer(src)
     var toks = lx.run()
-    print("tokenized cpp/examples/fib.rg ->", len(toks), "tokens")
+    print("tokenized examples/fib.rg ->", len(toks), "tokens")
     var i = 0
     while i < len(toks):
         print(toks[i])

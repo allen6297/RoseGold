@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Minimal LSP client that drives `rosegoldc --lsp` over stdio and checks
-# hover / go-to-definition / completion on demo/lsp_demo.rg.
+# hover / go-to-definition / completion on examples/lsp_demo.rg.
 import json, os, subprocess, sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BIN  = os.path.join(ROOT, "cpp", "rosegoldc")
-DOC  = os.path.join(ROOT, "demo", "lsp_demo.rg")
+DOC  = os.path.join(ROOT, "examples", "lsp_demo.rg")
 URI  = "file://" + DOC
 
 def frame(msg):
