@@ -17,3 +17,6 @@ editors/jetbrains/.gradle/
 # Python bytecode (python-reference oracle)
 __pycache__/
 *.pyc
+
+# IntelliJ Platform Gradle plugin state
+editors/jetbrains/.intellijPlatform/
