@@ -1,0 +1,44 @@
+NOTE: [1, 2, 3] are options, the first place is the default 
+
+import MODULE
+
+#MODULE is inferred
+#INHERITS only 1, uses 0...
+[MODULE, pub, private] class CLASSNAME [NONE, extends] INHERITS [NONE, uses] TRAITA, TraitB:
+
+    var Foo: TYPE #can be infered
+    const Foo
+    enum NAME {}
+    var x = match n {
+    0: "zero"
+    _: "other"
+    }
+
+    # script-style: this runs on import \/
+    var registry = graphics.init()  
+
+    ##/
+    MULTILINE COMMENT
+    /##
+    [pub, private, static] func FUNCTIONNAME (ParamName: TYPE)-> TYPE: #Return type is optional defaults to void
+
+    ##INLINE COMMENT
+
+        for [VARNAME] in [REFERENCE] {}
+
+        match Foo:
+            1: pass
+            2, 3: pass
+            _: return
+
+        if SOME [COMPARE]:
+            PASS
+        elif SOME [COMPARE]:
+            PASS
+        else:
+            PASS
+
+        [pass, return TYPE]
+    
+    [MODULE, pub, private] class INNERCLASSNAME [extends, uses] INHERITS:
+        CTX

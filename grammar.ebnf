@@ -1,0 +1,275 @@
+(* =============================================================
+   FORMAL GRAMMAR — RoseGold (colon + indentation)
+   Blocks are introduced by ':' and delimited by INDENT / DEDENT
+   (the "offside rule", like Python / Go).
+   =============================================================
+
+   EBNF meta-notation (NOT part of the language):
+     =        rule definition
+     |        alternation
+     ( )      grouping
+     [ x ]    optional (0 or 1)
+     { x }    repetition (0 or more)
+     "x"      literal terminal (actual source text)
+     (* .. *) comment
+   ============================================================= *)
+
+
+(* ---------- Lexical (tokens produced by the lexer) ---------- *)
+
+Ident       = Letter , { Letter | Digit | "_" } ;
+Letter      = "A".."Z" | "a".."z" | "_" ;
+Digit       = "0".."9" ;
+
+IntLit      = Digit , { Digit } ;
+FloatLit    = Digit , { Digit } , "." , Digit , { Digit } ;
+StringLit   = '"' , { any-char-except-unescaped-quote } , '"' ;
+BoolLit     = "true" | "false" ;
+
+(* Comments are stripped by the lexer, never reach the parser:
+     line   : "#" ... end-of-line
+     block  : "#/" ... "/#"   (may span lines)                  *)
+
+(* Keywords (reserved): module import as pub internal private static
+   class trait enum extends uses func init var const return pass
+   if elif else while for in match break continue try catch raise
+   true false                                                    *)
+
+(* ---------- The offside rule (indentation) ----------
+
+   The lexer tracks indentation on a stack and emits three
+   synthetic tokens the grammar below consumes literally:
+
+     NEWLINE   ends a logical line
+     INDENT    a deeper indentation level opens a block
+     DEDENT    a block closes (one DEDENT per level closed)
+
+   Rules:
+     - Blank lines and comment-only lines do not affect indentation.
+     - NEWLINE / INDENT / DEDENT are SUPPRESSED while inside '(' or
+       '['   -> wrap a long expression in parens to span lines.
+     - A block is always  ':' NEWLINE INDENT ... DEDENT.
+   ------------------------------------------------------------- *)
+
+
+(* ---------- Top level ---------- *)
+
+Program     = { NEWLINE } ,
+              [ ModuleDecl ] , { ImportDecl } , { Declaration } ;
+
+ModuleDecl  = "module" , ModulePath , NEWLINE ;
+ModulePath  = Ident , { "." , Ident } ;         (* e.g. graphics.geometry *)
+
+(* Imports: qualified whole-module, aliased, or a selective list.
+   'pub import' re-exports the module through this one.
+   The selective list uses '( )' (the language has no '{ }').     *)
+ImportDecl  = [ "pub" ] , "import" , ModulePath ,
+              [ "as" , Ident
+              | "." , "(" , Ident , { "," , Ident } , ")" ] ,
+              NEWLINE ;
+
+Declaration = ClassDecl
+            | TraitDecl
+            | ExtendDecl
+            | EnumDecl
+            | FuncDecl
+            | ModuleInit
+            | ( FieldDecl , NEWLINE ) ;    (* global var / const *)
+
+(* runs once when the module is loaded, dependencies first *)
+ModuleInit  = "init" , Suite ;
+
+
+(* ---------- Modifiers ---------- *)
+
+Visibility  = "pub" | "internal" | "private" ;   (* default: internal *)
+Modifiers   = [ Visibility ] , [ "static" ] ;
+
+
+(* ---------- Types & generics ---------- *)
+
+Type        = NamedType | FuncType ;
+NamedType   = Ident , [ "<" , TypeArgs , ">" ] ;   (* e.g. List<Shape> *)
+FuncType    = "func" , "(" , [ TypeList ] , ")" ,
+              "->" , Type ;                        (* e.g. func(Int) -> Bool *)
+TypeArgs    = Type , { "," , Type } ;
+TypeList    = Type , { "," , Type } ;
+
+GenericParams = "<" , GenericParam , { "," , GenericParam } , ">" ;
+GenericParam  = Ident , [ ":" , Type , { "+" , Type } ] ;   (* T: Comparable *)
+
+
+(* ---------- Suite (an indented block of statements) ---------- *)
+
+Suite       = ":" , NEWLINE , INDENT , Statement , { Statement } , DEDENT ;
+
+
+(* ---------- Class ---------- *)
+
+ClassDecl   = Modifiers , "class" , Ident , [ GenericParams ] ,
+              [ "extends" , Type ] ,
+              [ "uses" , TypeList ] ,
+              ":" , NEWLINE , INDENT , Member , { Member } , DEDENT ;
+
+Member      = ( FieldDecl , NEWLINE )
+            | FuncDecl
+            | CtorDecl
+            | ClassDecl
+            | EnumDecl ;
+
+(* Constructor. Construction uses call syntax:  Canvas("title")
+   'self' is implicit inside init. A base constructor can be
+   invoked with 'super(args)' as the first statement -- SEMANTIC. *)
+CtorDecl    = Modifiers , "init" , "(" , [ ParamList ] , ")" , Suite ;
+
+
+(* ---------- Trait ---------- *)
+(* A trait method with a Suite has a DEFAULT body; without one it is
+   abstract. SEMANTIC (as implemented in rosegoldc): a class that `uses` a
+   trait must implement every ABSTRACT method (checked by signature); it
+   inherits each DEFAULT method (and may override it). A generic bound
+   `<T: Trait>` is enforced at each instantiation site. The type `Self` may
+   appear in a trait method signature; it denotes the conforming type
+   (substituted to the class at conformance and to the receiver/type-
+   parameter at each call). Default bodies see `self` typed as the trait. *)
+
+TraitDecl   = Modifiers , "trait" , Ident , [ GenericParams ] ,
+              [ "uses" , TypeList ] ,
+              ":" , NEWLINE , INDENT , TraitMethod , { TraitMethod } , DEDENT ;
+
+TraitMethod = FuncSig , ( NEWLINE | Suite ) ;
+
+
+(* ---------- Extension (retroactive conformance) ---------- *)
+(* `extend Type uses Trait, ...:` makes an EXISTING type conform to traits
+   after the fact -- including primitives (Int/Float/String/Bool), List/Map,
+   and classes. It must implement the traits' abstract methods (inheriting
+   any defaults). SEMANTIC: extension methods on non-class types dispatch via
+   a runtime type-tag table; on classes they are inlined onto the class. *)
+
+ExtendDecl  = "extend" , Ident , [ "uses" , TypeList ] ,
+              ":" , NEWLINE , INDENT , FuncDecl , { FuncDecl } , DEDENT ;
+
+
+(* ---------- Enum ---------- *)
+
+EnumDecl    = Modifiers , "enum" , Ident , [ GenericParams ] ,
+              ":" , NEWLINE , INDENT , Variant , { Variant } , DEDENT ;
+
+Variant     = Ident , [ "(" , FieldPair , { "," , FieldPair } , ")" ] , NEWLINE ;
+FieldPair   = Ident , ":" , Type ;
+
+
+(* ---------- Functions ---------- *)
+
+FuncDecl    = Modifiers , FuncSig , Suite ;
+FuncSig     = "func" , Ident , [ GenericParams ] ,
+              "(" , [ ParamList ] , ")" ,
+              [ "->" , Type ] ;                 (* omitted => void *)
+
+ParamList   = Param , { "," , Param } ;
+Param       = Ident , [ ":" , Type ] ;          (* 'self' is a plain Param *)
+
+
+(* ---------- Fields / variables ---------- *)
+
+FieldDecl   = Modifiers , ( VarDecl | ConstDecl ) ;
+VarDecl     = "var"   , Ident , [ ":" , Type ] , [ "=" , Expr ] ;
+ConstDecl   = "const" , Ident , [ ":" , Type ] , "=" , Expr ;  (* init required *)
+
+
+(* ---------- Statements ---------- *)
+
+Statement   = ( SimpleStmt , NEWLINE )
+            | CompoundStmt ;
+
+SimpleStmt  = VarDecl
+            | ConstDecl
+            | ReturnStmt
+            | "pass"
+            | "break"
+            | "continue"
+            | RaiseStmt
+            | Assignment
+            | Expr ;              (* expression statement, e.g. a call *)
+
+CompoundStmt = IfStmt | WhileStmt | ForStmt | MatchExpr | TryStmt ;
+
+RaiseStmt   = "raise" , Expr ;
+TryStmt     = "try" , Suite , "catch" , Ident , Suite ;
+
+IfStmt      = "if" , Expr , Suite ,
+              { "elif" , Expr , Suite } ,
+              [ "else" , Suite ] ;
+
+WhileStmt   = "while" , Expr , Suite ;
+
+ForStmt     = "for" , Ident , "in" , Expr , Suite ;
+
+ReturnStmt  = "return" , [ Expr ] ;
+
+Assignment  = LValue , "=" , Expr ;
+LValue      = Ident , { "." , Ident | "[" , Expr , "]" } ;
+
+
+(* ---------- Expressions (layered for precedence) ---------- *)
+
+Expr        = OrExpr ;
+OrExpr      = AndExpr    , { "||" , AndExpr } ;
+AndExpr     = EqExpr     , { "&&" , EqExpr } ;
+EqExpr      = CmpExpr    , { ( "==" | "!=" ) , CmpExpr } ;
+CmpExpr     = AddExpr    , { ( "<" | "<=" | ">" | ">=" ) , AddExpr } ;
+AddExpr     = MulExpr    , { ( "+" | "-" ) , MulExpr } ;
+MulExpr     = Unary      , { ( "*" | "/" | "%" ) , Unary } ;
+Unary       = ( "!" | "-" ) , Unary
+            | Postfix ;
+
+Postfix     = Primary , { CallSuffix | MemberSuffix | IndexSuffix } ;
+CallSuffix  = "(" , [ ArgList ] , ")" ;
+MemberSuffix= "." , Ident ;
+IndexSuffix = "[" , Expr , "]" ;                 (* list / string indexing *)
+ArgList     = Expr , { "," , Expr } ;
+
+Primary     = Literal
+            | Ident
+            | MatchExpr
+            | ClosureExpr
+            | ListLit
+            | "(" , Expr , ")" ;
+
+Literal     = IntLit | FloatLit | StringLit | BoolLit ;
+ListLit     = "[" , [ Expr , { "," , Expr } , [ "," ] ] , "]" ;
+
+(* A closure is single-expression (arrow), so it composes inside
+   call parens where INDENT/DEDENT are suppressed:
+     each(xs, func(x: Int) -> Int => x + 1)                      *)
+ClosureExpr = "func" , "(" , [ ParamList ] , ")" ,
+              [ "->" , Type ] , "=>" , Expr ;
+
+
+(* ---------- match ---------- *)
+(* match is an expression; arms indent under it. An arm body is an
+   inline expression, OR its own indented block for multi statements. *)
+
+MatchExpr   = "match" , Expr , ":" , NEWLINE ,
+              INDENT , MatchArm , { MatchArm } , DEDENT ;
+
+MatchArm    = PatternList , ":" ,
+              ( Expr , NEWLINE
+              | NEWLINE , INDENT , Statement , { Statement } , DEDENT ) ;
+PatternList = Pattern , { "," , Pattern } ;      (* e.g.  2, 3:  *)
+
+Pattern     = "_"                                (* wildcard   *)
+            | Literal                            (* 0, "zero"  *)
+            | Ident , [ "(" , BindingList , ")" ];(* Circle(r)  *)
+BindingList = Ident , { "," , Ident } ;
+
+
+(* =============================================================
+   STILL SEMANTIC (decided during type-checking, not parsing):
+     - trait default bodies vs pure interface; method resolution
+       when two 'uses' traits define the same method
+     - base-constructor delegation: 'super(args)' as first stmt
+     - is 'Void' a real type name or just an omitted return?
+     - generic bounds: grammar allows many (T: A + B)
+   ============================================================= *)

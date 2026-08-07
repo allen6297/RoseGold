@@ -1,0 +1,105 @@
+#pragma once
+#include "compiler.hpp"
+
+// ---------------------------------------------------------------------
+// VM
+// ---------------------------------------------------------------------
+struct VMError : std::runtime_error { using std::runtime_error::runtime_error; };
+static Value arith(Op op, const Value& a, const Value& b) {
+    if (op == Op::ADD && (std::holds_alternative<std::string>(a) || std::holds_alternative<std::string>(b))) return Value{toStr(a) + toStr(b)};
+    if (!isNum(a) || !isNum(b)) throw VMError("cannot apply arithmetic to non-numbers");
+    bool bi = std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b);
+    if (bi && op != Op::DIV) { int64_t x = std::get<int64_t>(a), y = std::get<int64_t>(b); switch (op) { case Op::ADD: return Value{x + y}; case Op::SUB: return Value{x - y}; case Op::MUL: return Value{x * y}; case Op::MOD: if (y == 0) throw VMError("mod by zero"); return Value{x % y}; default: break; } }
+    double x = asNum(a), y = asNum(b); switch (op) { case Op::ADD: return Value{x + y}; case Op::SUB: return Value{x - y}; case Op::MUL: return Value{x * y}; case Op::DIV: if (y == 0.0) throw VMError("division by zero"); return Value{x / y}; case Op::MOD: return Value{std::fmod(x, y)}; default: throw VMError("bad op"); }
+}
+static bool valueEq(const Value& a, const Value& b) { if (isNum(a) && isNum(b)) return asNum(a) == asNum(b); return a == b; }
+struct Frame { CFunc* fn; int ip; int base; };
+struct Handler { int catchIp; size_t frameDepth; size_t stackSize; };
+
+static void execTop(Program& prog, std::vector<Value>& globals, int startIndex) {
+    std::vector<Value> st; std::vector<Frame> frames; std::vector<Handler> handlers;
+    auto call = [&](int fi, int argc) { CFunc* fn = &prog.funcs[fi]; int base = (int)st.size() - argc; while ((int)st.size() < base + fn->nlocals) st.push_back(Value{}); frames.push_back({fn, 0, base}); };
+    auto asList = [&](const Value& v) -> ListObj& { if (auto p = std::get_if<std::shared_ptr<ListObj>>(&v)) return **p; throw VMError("expected a list"); };
+    auto asInst = [&](const Value& v) -> Instance& { if (auto p = std::get_if<std::shared_ptr<Instance>>(&v)) return **p; throw VMError("expected an object"); };
+    auto asMap = [&](const Value& v) -> MapObj& { if (auto p = std::get_if<std::shared_ptr<MapObj>>(&v)) return **p; throw VMError("expected a map"); };
+    call(startIndex, 0);
+    while (!frames.empty()) {
+        Frame& fr = frames.back(); Instr in = fr.fn->code[fr.ip++];
+        switch (in.op) {
+            case Op::CONST: st.push_back(prog.consts[in.a]); break;
+            case Op::PUSHNIL: st.push_back(Value{}); break;
+            case Op::LOAD: st.push_back(st[fr.base + in.a]); break;
+            case Op::STORE: st[fr.base + in.a] = st.back(); st.pop_back(); break;
+            case Op::LOADG: st.push_back(globals[in.a]); break;
+            case Op::STOREG: globals[in.a] = st.back(); st.pop_back(); break;
+            case Op::POP: st.pop_back(); break;
+            case Op::NEG: { Value v = st.back(); st.pop_back(); if (std::holds_alternative<int64_t>(v)) st.push_back(Value{-std::get<int64_t>(v)}); else st.push_back(Value{-asNum(v)}); break; }
+            case Op::NOT: { Value v = st.back(); st.pop_back(); st.push_back(Value{!truthy(v)}); break; }
+            case Op::ADD: case Op::SUB: case Op::MUL: case Op::DIV: case Op::MOD: { Value b = st.back(); st.pop_back(); Value a = st.back(); st.pop_back(); st.push_back(arith(in.op, a, b)); break; }
+            case Op::LT: case Op::LE: case Op::GT: case Op::GE: {
+                Value b = st.back(); st.pop_back(); Value a = st.back(); st.pop_back(); bool r;
+                if (std::holds_alternative<std::string>(a) && std::holds_alternative<std::string>(b)) {
+                    const std::string& x = std::get<std::string>(a); const std::string& y = std::get<std::string>(b);
+                    r = in.op == Op::LT ? x < y : in.op == Op::LE ? x <= y : in.op == Op::GT ? x > y : x >= y;
+                } else { double x = asNum(a), y = asNum(b); r = in.op == Op::LT ? x < y : in.op == Op::LE ? x <= y : in.op == Op::GT ? x > y : x >= y; }
+                st.push_back(Value{r}); break;
+            }
+            case Op::EQ: case Op::NE: { Value b = st.back(); st.pop_back(); Value a = st.back(); st.pop_back(); bool r = valueEq(a, b); st.push_back(Value{in.op == Op::EQ ? r : !r}); break; }
+            case Op::JUMP: fr.ip = in.a; break;
+            case Op::JFALSE: { Value v = st.back(); st.pop_back(); if (!truthy(v)) fr.ip = in.a; break; }
+            case Op::JTRUE: { Value v = st.back(); st.pop_back(); if (truthy(v)) fr.ip = in.a; break; }
+            case Op::MAKELIST: { auto lo = std::make_shared<ListObj>(); lo->items.resize(in.a); for (int k = in.a - 1; k >= 0; k--) { lo->items[k] = st.back(); st.pop_back(); } st.push_back(Value{lo}); break; }
+            case Op::IGET: { Value idx = st.back(); st.pop_back(); Value lst = st.back(); st.pop_back(); if (!std::holds_alternative<int64_t>(idx)) throw VMError("index must be an integer"); int64_t k = std::get<int64_t>(idx); if (auto sp = std::get_if<std::string>(&lst)) { if (k < 0 || k >= (int64_t)sp->size()) throw VMError("string index out of range"); st.push_back(Value{std::string(1, (*sp)[k])}); break; } ListObj& L = asList(lst); if (k < 0 || k >= (int64_t)L.items.size()) throw VMError("list index " + std::to_string(k) + " out of range"); st.push_back(L.items[k]); break; }
+            case Op::ISET: { Value val = st.back(); st.pop_back(); Value idx = st.back(); st.pop_back(); Value lst = st.back(); st.pop_back(); if (!std::holds_alternative<int64_t>(idx)) throw VMError("index must be an integer"); int64_t k = std::get<int64_t>(idx); ListObj& L = asList(lst); if (k < 0 || k >= (int64_t)L.items.size()) throw VMError("list index " + std::to_string(k) + " out of range"); L.items[k] = val; break; }
+            case Op::NEWOBJ: { auto inst = std::make_shared<Instance>(); inst->clsIndex = in.a; inst->cls = prog.classes[in.a].name; for (auto& fn : prog.classes[in.a].fieldNames) inst->fields[fn] = Value{}; st.push_back(Value{inst}); break; }
+            case Op::GETPROP: { Value o = st.back(); st.pop_back(); const std::string& name = std::get<std::string>(prog.consts[in.a]); Instance& I = asInst(o); auto it = I.fields.find(name); if (it == I.fields.end()) throw VMError("'" + I.cls + "' has no member '" + name + "'"); st.push_back(it->second); break; }
+            case Op::SETPROP: { Value val = st.back(); st.pop_back(); Value o = st.back(); st.pop_back(); asInst(o).fields[std::get<std::string>(prog.consts[in.a])] = val; break; }
+            case Op::INVOKE: { int argc = in.b; const std::string& name = std::get<std::string>(prog.consts[in.a]); Value o = st[st.size() - argc - 1];
+                if (auto p = std::get_if<std::shared_ptr<Instance>>(&o)) { auto& ms = prog.classes[(*p)->clsIndex].methods; auto it = ms.find(name); if (it == ms.end()) throw VMError("'" + (*p)->cls + "' has no method '" + name + "'"); call(it->second, argc + 1); break; }
+                std::string tag = typeTag(o); auto te = prog.extensions.find(tag);   // extension method on a primitive/List/Map
+                if (te != prog.extensions.end()) { auto it = te->second.find(name); if (it != te->second.end()) { call(it->second, argc + 1); break; } }
+                throw VMError("'" + tag + "' has no method '" + name + "'"); }
+            case Op::MKVARIANT: { auto vv = std::make_shared<VariantVal>(); vv->enumName = prog.variants[in.a].enumName; vv->name = prog.variants[in.a].name; vv->vals.resize(in.b); for (int k = in.b - 1; k >= 0; k--) { vv->vals[k] = st.back(); st.pop_back(); } st.push_back(Value{vv}); break; }
+            case Op::ISVARIANT: { Value v = st.back(); st.pop_back(); const std::string& name = std::get<std::string>(prog.consts[in.a]); bool r = false; if (auto p = std::get_if<std::shared_ptr<VariantVal>>(&v)) r = ((*p)->name == name); st.push_back(Value{r}); break; }
+            case Op::VGET: { Value v = st.back(); st.pop_back(); auto p = std::get_if<std::shared_ptr<VariantVal>>(&v); if (!p) throw VMError("not a variant"); st.push_back((*p)->vals[in.a]); break; }
+            case Op::MKCLOSURE: { auto cl = std::make_shared<Closure>(); cl->fn = in.a; cl->upvals.resize(in.b); for (int k = in.b - 1; k >= 0; k--) { cl->upvals[k] = st.back(); st.pop_back(); } st.push_back(Value{cl}); break; }
+            case Op::CALLV: {
+                int argc = in.a; size_t cpos = st.size() - argc - 1; Value cv = st[cpos];
+                auto cl = std::get_if<std::shared_ptr<Closure>>(&cv); if (!cl) throw VMError("value is not callable");
+                std::vector<Value> args(st.begin() + cpos + 1, st.end()); st.resize(cpos);
+                for (auto& u : (*cl)->upvals) st.push_back(u); for (auto& a : args) st.push_back(a);
+                CFunc* fn = &prog.funcs[(*cl)->fn]; int nu = (int)(*cl)->upvals.size(); int base = (int)st.size() - (nu + argc);
+                while ((int)st.size() < base + fn->nlocals) st.push_back(Value{}); frames.push_back({fn, 0, base}); break;
+            }
+            case Op::SETUP_TRY: handlers.push_back({in.a, frames.size(), st.size()}); break;
+            case Op::POP_TRY: handlers.pop_back(); break;
+            case Op::RAISE: { Value v = st.back(); st.pop_back(); if (handlers.empty()) throw VMError("uncaught error: " + toStr(v)); Handler h = handlers.back(); handlers.pop_back(); frames.resize(h.frameDepth); st.resize(h.stackSize); frames.back().ip = h.catchIp; st.push_back(v); break; }
+            case Op::BUILTIN: {
+                int argc = in.b;
+                if (in.a == 0) { std::string out; for (int k = 0; k < argc; k++) { if (k) out += " "; out += toStr(st[st.size() - argc + k]); } st.resize(st.size() - argc); std::cout << out << "\n"; st.push_back(Value{}); }
+                else if (in.a == 1) { Value v = st.back(); st.pop_back(); if (auto sp = std::get_if<std::string>(&v)) st.push_back(Value{(int64_t)sp->size()}); else if (auto mp = std::get_if<std::shared_ptr<MapObj>>(&v)) st.push_back(Value{(int64_t)(*mp)->items.size()}); else st.push_back(Value{(int64_t)asList(v).items.size()}); }
+                else if (in.a == 2) { Value v = st.back(); st.pop_back(); if (!std::holds_alternative<int64_t>(v)) throw VMError("range() needs an integer"); auto lo = std::make_shared<ListObj>(); for (int64_t k = 0; k < std::get<int64_t>(v); k++) lo->items.push_back(Value{(int64_t)k}); st.push_back(Value{lo}); }
+                else if (in.a == 3) { Value x = st.back(); st.pop_back(); Value lv = st.back(); st.pop_back(); asList(lv).items.push_back(x); st.push_back(Value{}); }
+                else if (in.a == 4) { Value lv = st.back(); st.pop_back(); ListObj& L = asList(lv); if (L.items.empty()) throw VMError("pop() from empty list"); Value r = L.items.back(); L.items.pop_back(); st.push_back(r); }
+                else if (in.a == 5) { Value x = st.back(); st.pop_back(); st.push_back(Value{toStr(x)}); }
+                else if (in.a == 6) { Value x = st.back(); st.pop_back(); auto s = std::get_if<std::string>(&x); if (!s || s->empty()) throw VMError("ord() needs a non-empty string"); st.push_back(Value{(int64_t)(unsigned char)(*s)[0]}); }
+                else if (in.a == 7) { Value x = st.back(); st.pop_back(); if (!std::holds_alternative<int64_t>(x)) throw VMError("chr() needs an integer"); st.push_back(Value{std::string(1, (char)std::get<int64_t>(x))}); }
+                else if (in.a == 8) { Value ev = st.back(); st.pop_back(); Value sv2 = st.back(); st.pop_back(); Value sv = st.back(); st.pop_back(); const std::string& s = std::get<std::string>(sv); int64_t a = std::get<int64_t>(sv2), b = std::get<int64_t>(ev), n = (int64_t)s.size(); if (a < 0) a = 0; if (a > n) a = n; if (b < 0) b = 0; if (b > n) b = n; if (a > b) a = b; st.push_back(Value{s.substr(a, b - a)}); }
+                else if (in.a == 9) { Value sepv = st.back(); st.pop_back(); Value sv = st.back(); st.pop_back(); const std::string& s = std::get<std::string>(sv); const std::string& sep = std::get<std::string>(sepv); auto lo = std::make_shared<ListObj>(); if (sep.empty()) lo->items.push_back(Value{s}); else { size_t p = 0; while (true) { size_t q = s.find(sep, p); if (q == std::string::npos) { lo->items.push_back(Value{s.substr(p)}); break; } lo->items.push_back(Value{s.substr(p, q - p)}); p = q + sep.size(); } } st.push_back(Value{lo}); }
+                else if (in.a == 10) { Value x = st.back(); st.pop_back(); const std::string& s = std::get<std::string>(x); try { st.push_back(Value{(int64_t)std::stoll(s)}); } catch (...) { throw VMError("int(): cannot parse '" + s + "'"); } }
+                else if (in.a == 11) { Value x = st.back(); st.pop_back(); const std::string& p = std::get<std::string>(x); std::ifstream f(p); if (!f) throw VMError("readFile: cannot open " + p); std::stringstream ss; ss << f.rdbuf(); st.push_back(Value{ss.str()}); }
+                else if (in.a == 12) { Value d = st.back(); st.pop_back(); Value pv = st.back(); st.pop_back(); const std::string& p = std::get<std::string>(pv); const std::string& data = std::get<std::string>(d); std::ofstream of(p); if (!of) throw VMError("writeFile: cannot open " + p); of << data; st.push_back(Value{}); }
+                else if (in.a == 13) { st.push_back(Value{std::make_shared<MapObj>()}); }
+                else if (in.a == 14) { Value vv = st.back(); st.pop_back(); Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); bool found = false; for (auto& pr : M.items) if (valueEq(pr.first, kk)) { pr.second = vv; found = true; break; } if (!found) M.items.push_back({kk, vv}); st.push_back(Value{}); }
+                else if (in.a == 15) { Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); Value* found = nullptr; for (auto& pr : M.items) if (valueEq(pr.first, kk)) { found = &pr.second; break; } if (!found) throw VMError("get(): key not found: " + toStr(kk)); st.push_back(*found); }
+                else if (in.a == 16) { Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); bool r = false; for (auto& pr : M.items) if (valueEq(pr.first, kk)) { r = true; break; } st.push_back(Value{r}); }
+                else if (in.a == 17) { Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); auto lo = std::make_shared<ListObj>(); for (auto& pr : M.items) lo->items.push_back(pr.first); st.push_back(Value{lo}); }
+                else if (in.a == 18) { Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); for (size_t i = 0; i < M.items.size(); i++) if (valueEq(M.items[i].first, kk)) { M.items.erase(M.items.begin() + i); break; } st.push_back(Value{}); }
+                break;
+            }
+            case Op::CALL: call(in.a, in.b); break;
+            case Op::RET: { Value ret = st.back(); st.pop_back(); int base = frames.back().base; frames.pop_back(); st.resize(base); st.push_back(ret); break; }
+        }
+    }
+}
+

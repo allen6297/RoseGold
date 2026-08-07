@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Compiled RoseGold toolchain binary (built from cpp/src/*)
+/cpp/rosegoldc
+
+# VS Code extension deps
+editors/vscode/node_modules/
+
+# JetBrains / Gradle build output
+editors/jetbrains/build/
+editors/jetbrains/.gradle/
+
+# IDE settings (machine-specific)
+.idea/
+
+# Python bytecode (python-reference oracle)
+__pycache__/
+*.pyc

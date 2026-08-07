@@ -1,0 +1,45 @@
+{
+  "name": "rosegold",
+  "displayName": "RoseGold",
+  "description": "Language support for RoseGold: syntax highlighting, editor config, and a native language server (diagnostics, hover, go-to-definition, completion).",
+  "version": "0.2.0",
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages"],
+  "main": "./extension.js",
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "rosegold",
+        "aliases": ["RoseGold", "rosegold"],
+        "extensions": [".rg"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rosegold",
+        "scopeName": "source.rosegold",
+        "path": "./syntaxes/rosegold.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "RoseGold",
+      "properties": {
+        "rosegold.compilerPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the rosegoldc binary (the language server runs as 'rosegoldc --lsp'). If empty, the extension searches the workspace and the file's parent folders for cpp/rosegoldc or rosegoldc."
+        },
+        "rosegold.trace.server": {
+          "type": "string",
+          "enum": ["off", "messages", "verbose"],
+          "default": "off",
+          "description": "Trace the JSON-RPC traffic between VS Code and the RoseGold language server."
+        }
+      }
+    }
+  }
+}

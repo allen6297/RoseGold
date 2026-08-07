@@ -1,0 +1,26 @@
+<idea-plugin>
+  <id>dev.rosegold</id>
+  <name>RoseGold</name>
+  <vendor>RoseGold</vendor>
+  <description><![CDATA[
+    Language support for the RoseGold programming language (<code>.rg</code>):
+    syntax highlighting and live diagnostics from the native <code>rosegoldc --check</code>.
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <fileType
+        name="RoseGold file"
+        implementationClass="dev.rosegold.RoseGoldFileType"
+        fieldName="INSTANCE"
+        language="RoseGold"
+        extensions="rg"/>
+    <lang.syntaxHighlighterFactory
+        language="RoseGold"
+        implementationClass="dev.rosegold.RoseGoldSyntaxHighlighterFactory"/>
+    <externalAnnotator
+        language="RoseGold"
+        implementationClass="dev.rosegold.RoseGoldAnnotator"/>
+  </extensions>
+</idea-plugin>
