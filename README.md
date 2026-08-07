@@ -31,11 +31,29 @@ source → tokens → AST → type check → bytecode → run
 `parser` · `types` · `compiler` · `vm` headers + `main.cpp`): lexer (offside
 rule) → recursive-descent parser (typed AST) → static type checker (generic
 inference + visibility) → bytecode compiler → stack VM, with multi-file module
-loading. The formal grammar is `grammar.ebnf`, the module spec `resolution.md`.
+loading. The formal grammar is `docs/grammar.ebnf`, the module spec `docs/resolution.md`.
 
 `python-reference/` holds the earlier tree-walking implementation
 (`parser.py` · `resolver.py` · `checker.py` · `typecheck.py` · `interpreter.py`)
 — retained as an oracle / spec, byte-identical in behavior.
+
+## Repository layout
+
+```
+cpp/
+  src/               the compiler + VM (one header per stage: value · lexer · ast ·
+                     parser · types · compiler · vm) + main.cpp, plus ffi.hpp
+                     (native FFI), runtime.hpp (embeddable runtime), lsp.hpp
+  examples/          single-file feature demos (.rg)
+  embed/             C++ host-embedding demos (engine/game/hotreload) + their scripts
+  test/              LSP protocol test drivers (Python)
+demo/                multi-file module-system fixtures + the flagship prog.rg
+editors/
+  vscode/            VS Code extension (LSP client)
+  jetbrains/         IntelliJ / JetBrains plugin (LSP via LSP4IJ)
+python-reference/    the original tree-walking implementation, kept as an oracle
+docs/                grammar.ebnf (formal grammar) · resolution.md (module spec)
+```
 
 ## Language at a glance
 
@@ -72,8 +90,9 @@ The Python reference (in `python-reference/`) exposes each stage separately if
 you want to inspect it: `python3 python-reference/parser.py <file>` (AST),
 `.../typecheck.py` (types), `.../interpreter.py` (run), etc.
 
-Examples live in `demo/` (`prog.rg` runs; `typeerrors.rg` has deliberate type
-errors). `spec-indentation.rg` is the canonical syntax sample.
+Examples live in `demo/` (multi-file module-system fixtures; `prog.rg` is the
+runnable flagship, `typeerrors.rg` has deliberate type errors) and
+`cpp/examples/` (single-file feature showcases: traits, coroutines, `game.rg`, …).
 
 ## Native runtime (C++)
 
