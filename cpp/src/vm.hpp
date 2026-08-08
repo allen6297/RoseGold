@@ -29,6 +29,11 @@ struct Handler { int catchIp; size_t frameDepth; size_t stackSize; };
 struct Coro { Value fn; std::vector<Value> args; std::vector<Value> st; std::vector<Frame> frames; std::vector<Handler> handlers; int status = 0; };  // 0 fresh, 1 suspended, 2 dead
 struct YieldSignal { Value value; };   // thrown by `yield`, caught by resume() (unwinds only the coroutine's runLoop)
 
+// Debug hook: when set (by the DAP server in dap.hpp), runLoop calls it before
+// executing each instruction, giving the debugger a chance to stop for a
+// breakpoint or a step. Null in normal runs — one predictable branch per instr.
+static std::function<void(Program&, std::vector<Value>&, std::vector<Value>&, std::vector<Frame>&)> g_dbgHook;
+
 // Runs `frames` (with value stack `st`) to completion, returning the top-of-stack result;
 // throws YieldSignal on `yield`. Re-entrant: resume() calls it on a coroutine's own stacks.
 static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Value>& st, std::vector<Frame>& frames, std::vector<Handler>& handlers) {
@@ -37,7 +42,9 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
     auto asInst = [&](const Value& v) -> Instance& { if (auto p = std::get_if<std::shared_ptr<Instance>>(&v)) return **p; throw VMError("expected an object"); };
     auto asMap = [&](const Value& v) -> MapObj& { if (auto p = std::get_if<std::shared_ptr<MapObj>>(&v)) return **p; throw VMError("expected a map"); };
     while (!frames.empty()) {
-        Frame& fr = frames.back(); Instr in = fr.fn->code[fr.ip++];
+        Frame& fr = frames.back();
+        if (g_dbgHook) g_dbgHook(prog, globals, st, frames);   // debugger stop-point (before the instruction runs)
+        Instr in = fr.fn->code[fr.ip++];
         switch (in.op) {
             case Op::CONST: st.push_back(prog.consts[in.a]); break;
             case Op::PUSHNIL: st.push_back(Value{}); break;

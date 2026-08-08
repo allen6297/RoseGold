@@ -119,14 +119,15 @@ def test_formatter():
         finally:
             os.remove(tmp)
 
-# ---------------------------------------------------------------- LSP drivers
+# ---------------------------------------------------------------- protocol drivers
 def test_lsp():
-    print("• LSP drivers (golden stdout)")
-    for path in sorted(glob.glob(os.path.join(ROOT, "cpp", "test", "lsp_*.py"))):
+    print("• LSP + DAP drivers (golden stdout)")
+    drivers = glob.glob(os.path.join(ROOT, "cpp", "test", "lsp_*.py")) + glob.glob(os.path.join(ROOT, "cpp", "test", "dap_*.py"))
+    for path in sorted(drivers):
         name = os.path.splitext(os.path.basename(path))[0]
         code, out = run(["python3", path])
         if code != 0:
-            fails.append(f"lsp/{name}: driver crashed\n      " + (out.splitlines()[-1] if out else ""))
+            fails.append(f"proto/{name}: driver crashed\n      " + (out.splitlines()[-1] if out else ""))
         else:
             golden(f"{name}.out", out)
 

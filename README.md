@@ -89,6 +89,7 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 ./cpp/rosegoldc --check  <file.rg>   # type-check only (front-end gate; no execution)
 ./cpp/rosegoldc --format <file.rg>   # print the file in canonical style (to stdout)
 ./cpp/rosegoldc --lsp                # run the language server (JSON-RPC over stdio)
+./cpp/rosegoldc --dap                # run the debug adapter (DAP over stdio)
 ```
 
 The Python reference (in `python-reference/`) exposes each stage separately if
@@ -196,6 +197,7 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ `init:` load-time execution model + `main()` entry
 - ✅ native compiler + runtime — self-contained C++ (`cpp/`): typed parser + static type checker + bytecode VM, at **full parity** with Python (byte-identical output; identical type errors)
 - ✅ editor support — a native **language server** (`rosegoldc --lsp`): diagnostics, hover, go-to-definition (incl. locals/params), completion, document symbols/outline, signature help, workspace-wide find-references + rename, semantic tokens, document highlight, folding, inlay hints, **formatting** (canonical offside-rule whitespace; also `rosegoldc --format`), and **code actions** (did-you-mean quick fixes for undefined names/types; "add inferred type annotation" refactor). Clients: **VS Code** extension (`editors/vscode/`) and a **JetBrains** plugin (`editors/jetbrains/`, via LSP4IJ) — both drive the same server
+- ✅ debugger — a native **Debug Adapter** (`rosegoldc --dap`, DAP over stdio): line breakpoints, step in/over/out, call stack, and local/global variable inspection + expression evaluation, driven by a debug hook in the VM (per-instruction line table + per-function local-name table). VS Code launches it via a `rosegold` debug type (F5 on a `.rg` file)
 - ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O, a math/game stdlib (`sqrt`/`sin`/`lerp`/`clamp`/`random`/…)
 - ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `examples/coroutine.rg`, `game.rg`
 - ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`)

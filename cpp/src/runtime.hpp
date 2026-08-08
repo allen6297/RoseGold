@@ -17,17 +17,21 @@ static std::string rgModToFile(const std::string& root, const std::string& mod) 
 static std::string rgLastSeg(const std::string& p) { auto s = p.find_last_of('.'); return s == std::string::npos ? p : p.substr(s + 1); }
 
 // Parse the entry file and its transitive imports; produce a dependency-first order. Returns the entry module name.
-static std::string loadModules(const std::string& entryPath, std::map<std::string, Parsed>& mods, std::vector<std::string>& order) {
+static std::string loadModules(const std::string& entryPath, std::map<std::string, Parsed>& mods, std::vector<std::string>& order,
+                               std::map<std::string, std::string>* modFile = nullptr) {
     std::string root = rgDirOf(entryPath);
     Parsed entry = Parser{lex(rgReadFile(entryPath))}.program();
     std::string entryName = entry.module.empty() ? "$entry" : entry.module;
+    if (modFile) (*modFile)[entryName] = entryPath;
     mods[entryName] = std::move(entry);
     std::vector<std::string> work = {entryName};
     while (!work.empty()) {
         std::string m = work.back(); work.pop_back();
         for (auto& imp : mods[m].imports) {
             if (mods.count(imp.path)) continue;
-            mods[imp.path] = Parser{lex(rgReadFile(rgModToFile(root, imp.path)))}.program();
+            std::string f = rgModToFile(root, imp.path);
+            if (modFile) (*modFile)[imp.path] = f;
+            mods[imp.path] = Parser{lex(rgReadFile(f))}.program();
             work.push_back(imp.path);
         }
     }

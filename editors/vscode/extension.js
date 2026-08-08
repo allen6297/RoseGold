@@ -62,6 +62,40 @@ function activate(context) {
   );
   client.start();
   context.subscriptions.push({ dispose: () => client && client.stop() });
+
+  // Debugging: the same binary is a Debug Adapter (`rosegoldc --dap`).
+  const factory = {
+    createDebugAdapterDescriptor() {
+      return new vscode.DebugAdapterExecutable(compiler, ["--dap"]);
+    },
+  };
+  context.subscriptions.push(
+    vscode.debug.registerDebugAdapterDescriptorFactory("rosegold", factory)
+  );
+  // F5 on a .rg file with no launch.json: debug the active file.
+  const provider = {
+    resolveDebugConfiguration(_folder, config) {
+      if (!config.type && !config.request && !config.name) {
+        const ed = vscode.window.activeTextEditor;
+        if (ed && ed.document.languageId === "rosegold") {
+          config.type = "rosegold";
+          config.name = "Run RoseGold File";
+          config.request = "launch";
+          config.program = ed.document.fileName;
+          config.stopOnEntry = false;
+        }
+      }
+      if (!config.program) {
+        return vscode.window
+          .showInformationMessage("RoseGold: set 'program' to a .rg file to debug")
+          .then(() => undefined);
+      }
+      return config;
+    },
+  };
+  context.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider("rosegold", provider)
+  );
 }
 
 function deactivate() {

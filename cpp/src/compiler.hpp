@@ -13,8 +13,8 @@ enum class Op {
     NEWOBJ, GETPROP, SETPROP, INVOKE, MKVARIANT, ISVARIANT, VGET,
     MKCLOSURE, CALLV, SETUP_TRY, POP_TRY, RAISE, YIELD, CALL, BUILTIN, NATIVE, RET
 };
-struct Instr { Op op; int a = 0; int b = 0; };
-struct CFunc { std::string name; int nlocals = 0; std::vector<Instr> code; };
+struct Instr { Op op; int a = 0; int b = 0; int line = 0; };   // line: 1-based source line (for the debugger), 0 if synthetic
+struct CFunc { std::string name; int nlocals = 0; std::vector<Instr> code; std::vector<std::string> localNames; };   // localNames[slot] -> variable name (debug info)
 struct ClassDesc { std::string name; std::vector<std::string> fieldNames; int newFunc = -1; std::map<std::string, int> methods; };
 struct VDesc { std::string enumName, name; int arity; };
 struct Sym { int kind; int index; };   // kind: 0 FUNC, 1 CLASS, 2 VARIANT, 3 GLOBAL
@@ -36,17 +36,17 @@ struct Pending { int fi; std::vector<std::string> caps; std::vector<std::string>
 
 struct Compiler {
     Program& prog; ModuleCtx* mc = nullptr;
-    int curFi = -1; std::map<std::string, int> locals; int nextSlot = 0, uid = 0;
+    int curFi = -1; std::map<std::string, int> locals; int nextSlot = 0, uid = 0; int curLine = 0;
     std::vector<Loop> loops; std::vector<Pending> pending;
     Compiler(Program& p) : prog(p) {}
 
     CFunc& CF() { return prog.funcs[curFi]; }
     int addConst(Value v) { prog.consts.push_back(std::move(v)); return (int)prog.consts.size() - 1; }
     int nc(const std::string& s) { return addConst(Value{s}); }
-    int emit(Op op, int a = 0, int b = 0) { CF().code.push_back({op, a, b}); return (int)CF().code.size() - 1; }
+    int emit(Op op, int a = 0, int b = 0) { CF().code.push_back({op, a, b, curLine}); return (int)CF().code.size() - 1; }
     int here() { return (int)CF().code.size(); }
     void patch(int at, int t) { CF().code[at].a = t; }
-    int declare(const std::string& n) { int s = nextSlot++; locals[n] = s; return s; }
+    int declare(const std::string& n) { int s = nextSlot++; locals[n] = s; auto& ln = CF().localNames; if ((int)ln.size() <= s) ln.resize(s + 1); ln[s] = n; return s; }
 
     bool resolveUn(const std::string& name, Sym& out) {
         auto it = mc->sym->find(name); if (it != mc->sym->end()) { out = it->second; return true; }
@@ -86,6 +86,8 @@ struct Compiler {
 
     void block(std::vector<Stmt>& b) { for (auto& s : b) stmt(s); }
     void stmt(Stmt& s) {
+        int sl = s.nameLine ? s.nameLine : (s.expr ? s.expr->line : (s.target ? s.target->line : 0));   // the statement's source line
+        if (sl) curLine = sl;
         switch (s.k) {
             case Stmt::VAR: if (s.hasExpr) expr(*s.expr); else emit(Op::PUSHNIL); emit(Op::STORE, declare(s.name)); break;
             case Stmt::ASSIGN:

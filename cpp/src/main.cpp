@@ -1,6 +1,7 @@
 #include "runtime.hpp"
 #include "format.hpp"
 #include "lsp.hpp"
+#include "dap.hpp"
 
 // ---------------------------------------------------------------------
 // CLI driver (module loading + program building live in runtime.hpp,
@@ -11,6 +12,7 @@ int main(int argc, char** argv) {
     // `rosegoldc --check <file.rg>` type-check only (front-end gate; no execution)
     // `rosegoldc --lsp`             run the language server (JSON-RPC over stdio)
     if (argc >= 2 && std::string(argv[1]) == "--lsp") return runLsp();
+    if (argc >= 2 && std::string(argv[1]) == "--dap") return runDap();
     if (argc >= 3 && std::string(argv[1]) == "--format") {
         std::ifstream f(argv[2]);
         if (!f) { std::cerr << "cannot open " << argv[2] << "\n"; return 2; }

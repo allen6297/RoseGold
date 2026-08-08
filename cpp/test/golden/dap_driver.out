@@ -1,0 +1,16 @@
+[caps] configurationDone=True evaluateForHovers=True
+[breakpoints] [(10, True)]
+[stopped] reason=breakpoint
+  stack: main:10
+  locals main: x=10 y=32 z=void
+  globals: (none)
+[stepIn] reason=step
+  stack: add:4, main:10
+  locals add: a=10 b=32 sum=void
+[next] reason=step
+  stack: add:5, main:10
+  locals add: a=10 b=32 sum=42
+  eval sum = 42 (success=True)
+[output] 42
+[terminated]
+[exit] 0
