@@ -1,0 +1,8 @@
+size    = 3
+get two = 2
+has x   = false
+has one = true
+upd two = 22
+keys    = [two, three]
+size'   = 2
+map     = {two: 22, three: 3}

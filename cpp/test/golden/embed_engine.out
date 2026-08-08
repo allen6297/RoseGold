@@ -1,0 +1,14 @@
+== engine boot ==
+  [engine] behavior ready
+frame 0: entity x = 0.18000000000000002
+frame 1: entity x = 0.522
+frame 2: entity x = 1.0098
+frame 3: entity x = 1.6288200000000002
+frame 4: entity x = 2.3659380000000003
+frame 5: entity x = 3.2093442000000003
+frame 6: entity x = 4.148409780000001
+  [engine] crossed x = 5
+frame 7: entity x = 5.173568802000001
+frame 8: entity x = 6.276211921800002
+frame 9: entity x = 7.448590729620002
+== 10 frames ticked; final x = 7.448590729620002 ==

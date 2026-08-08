@@ -1,0 +1,7 @@
+type errors:
+  typeerrors:12: 'a': cannot assign 'String' to declared 'Int'
+  typeerrors:13: argument 1: 'Bool' is not assignable to 'Int'
+  typeerrors:14: condition must be 'Bool', got 'Int'
+  typeerrors:17: 'secret' is private to 'Box'
+  typeerrors:18: 'Box' has no member 'nope'
+  typeerrors:19: cannot apply '+' to 'Int' and 'String'

@@ -1,0 +1,3 @@
+loader: init ran
+appinit: init ran
+main: loader ready = true

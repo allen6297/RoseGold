@@ -1,0 +1,4 @@
+max int     = 9
+max string  = pear
+3 lt 9      = true
+compare     = 6

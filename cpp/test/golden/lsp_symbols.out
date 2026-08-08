@@ -1,0 +1,11 @@
+[caps] documentSymbol=True signatureHelp=True
+[documentSymbol]
+  - main (Function)()
+  - Counter (Class)
+    - value (Field)
+    - bump (Method)(self)
+    - get (Method)(self)
+[sig set(     ] set(Map<K, V>, K, V) -> Void  [active param 0]
+[sig set(a, | ] set(Map<K, V>, K, V) -> Void  [active param 1]
+[sig Counter( ] Counter(Int) -> Counter  [active param 0]
+[exit] 0

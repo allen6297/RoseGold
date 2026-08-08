@@ -1,0 +1,11 @@
+[initialize] capabilities: {"textDocumentSync": 1, "hoverProvider": true, "definitionProvider": true, "referencesProvider": true, "documentSymbolProvider": true, "documentHighlightProvider": true, "foldingRangeProvider": true, "inlayHintProvider": true, "semanticTokensProvider": {"legend": {"tokenTypes": ["type", "class", "enum", "interface", "function", "method", "property", "variable", "parameter"], "tokenModifiers": []}, "full": true}, "renameProvider": {"prepareProvider": true}, "signatureHelpProvider": {"triggerCharacters": ["(", ","]}, "completionProvider": {"triggerCharacters": ["."]}}
+[diagnostics] 0 []
+[hover counts] {"contents": {"kind": "markdown", "value": "```rosegold\ncounts: Map<String, Int>\n```"}}
+[hover c.bump] {"contents": {"kind": "markdown", "value": "```rosegold\nbump: func() -> Void\n```"}}
+[def Counter] [{"uri": "file://<ROOT>/examples/lsp_demo.rg", "range": {"start": {"line": 2, "character": 6}, "end": {"line": 2, "character": 13}}}]
+[def bump] [{"uri": "file://<ROOT>/examples/lsp_demo.rg", "range": {"start": {"line": 6, "character": 9}, "end": {"line": 6, "character": 13}}}]
+[def local counts] [{"uri": "file://<ROOT>/examples/lsp_demo.rg", "range": {"start": {"line": 12, "character": 8}, "end": {"line": 12, "character": 14}}}]
+[def local c] [{"uri": "file://<ROOT>/examples/lsp_demo.rg", "range": {"start": {"line": 14, "character": 8}, "end": {"line": 14, "character": 9}}}]
+[def param start] [{"uri": "file://<ROOT>/examples/lsp_demo.rg", "range": {"start": {"line": 4, "character": 9}, "end": {"line": 4, "character": 14}}}]
+[completion c.] [["value", "Int"], ["bump", "func() -> Void"], ["get", "func() -> Int"]]
+[exit] server returned 0

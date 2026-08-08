@@ -1,0 +1,4 @@
+u + v     = 4 6
+u < v     = true
+u == copy = true
+smaller   = 3

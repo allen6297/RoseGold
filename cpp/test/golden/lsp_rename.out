@@ -1,0 +1,9 @@
+[caps] references=True rename={'prepareProvider': True}
+[refs value ] [(3, 8), (5, 13), (7, 13), (7, 26), (9, 20)]
+[refs counts] [(12, 8), (13, 8), (16, 14)]
+[refs Counter] [(2, 6), (14, 12)]
+[prepare counts] {"start": {"line": 12, "character": 8}, "end": {"line": 12, "character": 14}}
+[prepare print ] null (expect null)
+[rename counts->totals] 3 edits at [(12, 8), (13, 8), (16, 14)] -> all newText='totals'
+[rename start->begin ] 2 edits at [(4, 9), (5, 21)]
+[exit] 0

@@ -1,0 +1,3 @@
+box int    = 41
+box string = hello
+first      = 10

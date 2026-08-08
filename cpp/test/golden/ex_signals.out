@@ -1,0 +1,6 @@
+emit 10:
+  ui:  - 10 hp
+  sfx: play hurt sound
+emit 5:
+  ui:  - 5 hp
+  sfx: play hurt sound

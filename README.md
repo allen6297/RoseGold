@@ -40,12 +40,14 @@ loading. The formal grammar is `docs/grammar.ebnf`, the module spec `docs/resolu
 ## Repository layout
 
 ```
+Makefile             build & test entry points (make · make test · make embed)
 cpp/
   src/               the compiler + VM (one header per stage: value · lexer · ast ·
                      parser · types · compiler · vm) + main.cpp, plus ffi.hpp
                      (native FFI), runtime.hpp (embeddable runtime), lsp.hpp
   embed/             C++ host-embedding demos (engine/game/hotreload) + their scripts
-  test/              LSP protocol test drivers (Python)
+  test/              run_tests.py (golden test harness) · golden/ (committed
+                     snapshots) · LSP protocol test drivers (Python)
 examples/            .rg programs: feature demos, the flagship prog.rg, multi-file
                      module fixtures (core/, graphics/), self-hosting fragments
 editors/
@@ -53,6 +55,7 @@ editors/
   jetbrains/         IntelliJ / JetBrains plugin (LSP via LSP4IJ)
 python-reference/    the original tree-walking implementation, kept as an oracle
 docs/                grammar.ebnf (formal grammar) · resolution.md (module spec)
+.github/workflows/   ci.yml — builds + runs the suite on every push
 ```
 
 ## Language at a glance
@@ -89,6 +92,35 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 The Python reference (in `python-reference/`) exposes each stage separately if
 you want to inspect it: `python3 python-reference/parser.py <file>` (AST),
 `.../typecheck.py` (types), `.../interpreter.py` (run), etc.
+
+## Building & testing
+
+```bash
+make                 # build cpp/rosegoldc
+make test            # build + run the full suite (see below)
+make run FILE=examples/prog.rg
+make embed           # build the C++ host-embedding demos
+make update-golden   # regenerate golden snapshots after an intended change
+```
+
+`make test` (also run in CI on every push) is a single self-checking harness
+(`cpp/test/run_tests.py`) that:
+
+- **golden-snapshots** every runnable `examples/*.rg` — its stdout is diffed
+  against a committed snapshot under `cpp/test/golden/`, so any change in
+  behavior is caught, not just crashes;
+- asserts the **error fixtures** (`typeerrors`, `trait_errors`, `broken`,
+  `client`, `consumer`) are still rejected by the front end, snapshotting their
+  diagnostics;
+- cross-checks **C++/Python parity** on every example the Python oracle supports;
+- snapshots the **LSP drivers** and the **embedding demos**;
+- runs a **builtin-consistency guard** that verifies each builtin is wired
+  identically across all three places it must appear — the compiler's id map,
+  the type-checker's signatures, and the VM's dispatch — so the three can't
+  drift out of sync.
+
+After a deliberate behavior change, run `make update-golden` and review the diff
+before committing.
 
 All `.rg` programs live in `examples/`: the runnable flagship `prog.rg`, feature
 showcases (traits, coroutines, `game.rg`, …), multi-file module-system fixtures
@@ -168,4 +200,5 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a library from first-class functions; `examples/signals.rg`)
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
 - ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a lexer (streams tokens; reads a file + builds a token list) and a full tokenize→parse→eval pipeline over a recursive enum AST
+- ✅ test harness + CI — `make test` golden-snapshots every example, asserts the error fixtures fail, cross-checks C++/Python parity, snapshots the LSP + embedding demos, and guards the builtin tables against drift; runs on every push via GitHub Actions
 - ⏳ future: port the full compiler to RoseGold (true self-hosting); trait default-method bodies; primitives implementing built-in traits

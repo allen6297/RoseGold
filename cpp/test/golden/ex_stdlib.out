@@ -1,0 +1,9 @@
+list  = [10, 20, 30]  len = 3
+pop   = 30 -> [10, 20]
+ord   = 65
+chr   = B
+substr= Rose
+str   = 42!
+int   = 124
+split = [a, b, c]  len = 3
+file  = hello from RoseGold

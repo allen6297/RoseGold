@@ -1,0 +1,3 @@
+[refs greet] [('lib.rg', 2), ('main.rg', 5), ('main.rg', 6)]
+[rename greet->hello] {'lib.rg': 1, 'main.rg': 2}
+[after rename] run exit=0 output=['a', 'b']

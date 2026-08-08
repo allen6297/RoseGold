@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang
+        run: sudo apt-get update && sudo apt-get install -y clang
+
+      - name: Show toolchain
+        run: clang++ --version && python3 --version
+
+      # Builds rosegoldc, golden-snapshots every runnable example, asserts the
+      # error fixtures are rejected, cross-checks C++/Python parity on the shared
+      # core, snapshots the LSP drivers and embedding demos, and verifies the
+      # builtin tables stay in sync across compiler / type-checker / VM.
+      - name: Run test suite
+        run: make test

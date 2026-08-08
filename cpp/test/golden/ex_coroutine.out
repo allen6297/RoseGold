@@ -1,0 +1,10 @@
+fib via generator:
+  [0, 1, 1, 2, 3, 5, 8, 13]
+frame-driven routine:
+frame 0
+  spawn
+frame 1
+frame 2
+  attack
+frame 3
+  retreat

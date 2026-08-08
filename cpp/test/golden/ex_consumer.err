@@ -1,0 +1,2 @@
+type errors:
+  consumer:7: module 'facade' has no public member 'helper'

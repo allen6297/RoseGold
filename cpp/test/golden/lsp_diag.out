@@ -1,0 +1,11 @@
+[open typeerrors.rg] 6 diagnostics:
+   line 12: 'a': cannot assign 'String' to declared 'Int'
+   line 13: argument 1: 'Bool' is not assignable to 'Int'
+   line 14: condition must be 'Bool', got 'Int'
+   line 17: 'secret' is private to 'Box'
+   line 18: 'Box' has no member 'nope'
+   line 19: cannot apply '+' to 'Int' and 'String'
+[didChange -> clean] 0 diagnostics
+[didChange -> parse error] 1 diagnostics:
+   line 3: expected identifier
+[exit] 0

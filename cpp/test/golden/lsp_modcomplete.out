@@ -1,0 +1,2 @@
+[completion util.] [('Box', 'Class'), ('Color', 'Enum'), ('Green', 'EnumMember'), ('Red', 'EnumMember'), ('shout', 'Function'), ('twice', 'Function')]
+  secret hidden: True

@@ -1,0 +1,5 @@
+== running ==
+counter = 3
+== hot reload (recompile, keep state) ==
+counter = 3
+counter = 4

@@ -1,0 +1,6 @@
+describe c  = circle
+describe s  = square
+draw        = circle
+draw        = square
+area circle = 15.70795
+area mixed  = 21.56636
