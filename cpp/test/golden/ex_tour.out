@@ -1,0 +1,24 @@
+== enums + match ==
+circle: 12.56636
+rect:   12.0
+== generics ==
+box.get() + 1 = 42
+== traits (inherited default) ==
+Hello, Ada
+== operator overloading ==
+v + w = (4, 6)
+== closures ==
+sq(9) = 81
+== collections ==
+sum 1..4 = 10
+keys: [ada, alan] ada = 36
+== error handling ==
+caught: boom
+== coroutines ==
+generated: [0, 1, 2, 3]
+== signals ==
+  tick 1
+  tick 2
+  tick 3
+== vectors ==
+vlen(3,4) = 5.0

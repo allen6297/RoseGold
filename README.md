@@ -18,8 +18,13 @@ func main():
 
 ```bash
 clang++ -std=c++17 -O2 -o cpp/rosegoldc cpp/src/main.cpp   # build once
+./cpp/rosegoldc examples/tour.rg                               # a guided tour of the language
 ./cpp/rosegoldc examples/prog.rg                               # then run any .rg
 ```
+
+`examples/tour.rg` is the one-file tour — enums + match, generics, traits with
+default methods, operator overloading, closures, collections, error handling,
+coroutines, signals, and vectors, each section printing its results.
 
 ## Pipeline
 

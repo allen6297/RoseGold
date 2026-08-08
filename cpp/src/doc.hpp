@@ -4,8 +4,8 @@
 // ---------------------------------------------------------------------
 // Documentation comments  (Javadoc-style)
 // ---------------------------------------------------------------------
-//   ##*** one-line doc         (line doc; consecutive lines accumulate)
-//   #/*** ... /#               (block doc)
+//   ## one-line doc         (line doc; consecutive lines accumulate)
+//   #/ ... /#               (block doc)
 // A doc comment attaches to the declaration on the next code line. Because
 // both markers start with `#`, the lexer already strips them as ordinary
 // comments — this pass just *captures* them. `collectDocs` maps a
@@ -33,14 +33,14 @@ static std::map<int, std::string> collectDocs(const std::string& raw) {
             continue;
         }
         if (state == 2) { if (raw_line.find("/#") != std::string::npos) state = 0; continue; }   // inside a normal block
-        if (s.rfind("#/***", 0) == 0) {                // doc block open
+        if (s.rfind("#/", 0) == 0) {                // doc block open
             std::string rest = s.substr(5); size_t c = rest.find("/#");
             pending += docTrim(c == std::string::npos ? rest : rest.substr(0, c)) + "\n";
             if (c == std::string::npos) state = 1;
             continue;
         }
         if (s.rfind("#/", 0) == 0) { if (s.find("/#", 2) == std::string::npos) state = 2; continue; }   // normal block
-        if (s.rfind("##***", 0) == 0) { pending += docTrim(s.substr(5)) + "\n"; continue; }   // line doc
+        if (s.rfind("##", 0) == 0) { pending += docTrim(s.substr(5)) + "\n"; continue; }   // line doc
         if (!s.empty() && s[0] == '#') continue;       // normal line comment (keeps pending)
         if (s.empty()) continue;                       // blank (keeps pending)
         if (!pending.empty()) { docs[lineNo] = docTrim(pending); pending.clear(); }   // code line: attach
