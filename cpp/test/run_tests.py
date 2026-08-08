@@ -153,6 +153,15 @@ def test_selfhost_lexer():
     else:
         print("    (the RoseGold-in-RoseGold lexer matches the canonical lexer, byte-for-byte)")
 
+def test_selfhost_parser():
+    print("• self-hosted parser parity (rgparser.rg vs C++ --ast)")
+    _, rg = run([BIN, "examples/rgparser.rg"])          # RoseGold parser parsing examples/parse_sample.rg
+    _, cc = run([BIN, "--ast", "examples/parse_sample.rg"])  # the canonical C++ parser on the same file
+    if rg != cc:
+        fails.append("selfhost/rgparser: AST differs from the C++ parser on parse_sample.rg")
+    else:
+        print("    (the RoseGold-in-RoseGold parser matches the canonical parser, byte-for-byte)")
+
 # ---------------------------------------------------------------- extern (FFI)
 def test_extern():
     print("• extern declarations (standalone --check, no host)")
@@ -196,6 +205,7 @@ test_formatter()
 test_lsp()
 test_embed()
 test_selfhost_lexer()
+test_selfhost_parser()
 test_extern()
 test_docgen()
 test_builtins()

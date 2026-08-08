@@ -1,0 +1,7 @@
+(module parse_sample)
+(var LIMIT (int 5))
+(func add (params (a Int) (b Int)) Int (return (binop + (name a) (name b))))
+(func classify (params (n Int)) String (if (binop < (name n) (int 0)) (then (return (str))) (elif (binop == (name n) (int 0)) (return (str))) (else (return (str)))))
+(func sumTo (params (n Int)) Int (var total (int 0)) (var i (int 1)) (while (binop <= (name i) (name n)) (assign (name total) (binop + (name total) (name i))) (assign (name i) (binop + (name i) (int 1)))) (return (name total)))
+(func demo (params) Int (var xs (list (int 10) (int 20) (int 30) (int 40))) (var acc (index (name xs) (int 0))) (for x (name xs) (assign (name acc) (binop - (binop + (name acc) (binop * (name x) (int 2))) (int 1)))) (return (name acc)))
+(func main (params) Void (expr (call (name print) (call (name add) (int 2) (int 3)))) (expr (call (name print) (call (name classify) (unary - (int 1))))) (expr (call (name print) (call (name sumTo) (name LIMIT)))) (expr (call (name print) (call (name demo)))))

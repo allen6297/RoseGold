@@ -98,6 +98,7 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 ./cpp/rosegoldc --lsp                # run the language server (JSON-RPC over stdio)
 ./cpp/rosegoldc --dap                # run the debug adapter (DAP over stdio)
 ./cpp/rosegoldc --tokens <file.rg>   # dump the lexer's token stream (self-hosting ground truth)
+./cpp/rosegoldc --ast    <file.rg>   # dump the parsed AST as S-expressions (self-hosting ground truth)
 ./cpp/rosegoldc --doc    <file.rg>   # render a Markdown doc page from doc comments (Javadoc-style)
 ```
 
@@ -175,6 +176,7 @@ Fragments of RoseGold's own front-end, written in RoseGold and run natively
 - `examples/bootstrap.rg` — a lexer that streams tokens from an embedded string.
 - `examples/bootstrap2.rg` — a lexer that **reads a real `.rg` file** and builds a **token list**, using the standard library.
 - `examples/rglexer.rg` — a **faithful RoseGold lexer** (a real port of the C++ lexer, not a toy): it strips line/block comments, implements the **offside rule** (INDENT/DEDENT/NEWLINE via an indentation stack, with `(`/`[` suppressing newlines), and handles two-char operators, string escapes, and floats. Its token stream is **byte-identical to `rosegoldc --tokens`** (the test harness diffs the two) — the lexer stage of RoseGold, self-hosted.
+- `examples/rgparser.rg` — a **RoseGold parser written in RoseGold** (self-hosting rung 2): it lexes (via the ported offside lexer) and recursive-descent parses a core subset — module + globals + functions; `var`/`assign`/`return`/`if`-`elif`-`else`/`while`/`for`/`expr`/`break`/`continue`; and expressions across the full precedence ladder with calls, indexing, member access, and list literals — emitting an AST **byte-identical to `rosegoldc --ast`** (`examples/parse_sample.rg` is the fixture; the harness diffs the two). The parser stage of RoseGold, self-hosted.
 - `examples/calc.rg` — a full **tokenize → recursive-descent parse → evaluate** pipeline for arithmetic, building a **recursive enum AST** and walking it with `match`. The "parser + AST + eval" milestone — the shape of the real front-end.
 - `examples/mini.rg` — the calc pipeline plus **statements and variables**, using `Map<String, Int>` as the environment.
 - `examples/interp.rg` — a **Turing-complete** little imperative language (`if` / `while` / comparisons / reassignment, `end`-delimited blocks) interpreted in RoseGold; runs real algorithms (factorial, summation) via nested-block recursion over the AST.
@@ -213,7 +215,7 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`). Scripts declare the host's functions with **`extern func`** — type-checked standalone, bound by name at runtime (`cpp/embed/externdemo.cpp` + `externdemo.rg`)
 - ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a first-class language feature — see below; `examples/signals.rg`)
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
-- ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a **faithful lexer** (`rglexer.rg`, offside rule + comments + escapes, **token-for-token identical to the C++ lexer**), plus a lexer that reads a file into a token list and a full tokenize→parse→eval pipeline over a recursive enum AST
+- ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a **faithful lexer** (`rglexer.rg`, offside rule + comments + escapes, **token-for-token identical to the C++ lexer**) and a **recursive-descent parser** (`rgparser.rg`, a core subset → **AST byte-identical to the C++ parser** via `rosegoldc --ast`), plus a full tokenize→parse→eval pipeline over a recursive enum AST
 - ✅ documentation comments — Javadoc-style `##` line / `#/ ... /#` block docs attach to the following declaration; `rosegoldc --doc` renders a Markdown page (with `@param`/`@return`), and the language server shows them on hover; `examples/documented.rg`
 - ✅ test harness + CI — `make test` golden-snapshots every example, asserts the error fixtures fail, cross-checks C++/Python parity, snapshots the LSP + embedding demos, and guards the builtin tables against drift; runs on every push via GitHub Actions
 - ⏳ future: port the full compiler to RoseGold (true self-hosting); trait default-method bodies; primitives implementing built-in traits

@@ -1,6 +1,7 @@
 #include "runtime.hpp"
 #include "format.hpp"
 #include "doc.hpp"
+#include "astdump.hpp"
 #include "lsp.hpp"
 #include "dap.hpp"
 
@@ -30,6 +31,17 @@ int main(int argc, char** argv) {
             Parsed P = Parser{lex(src)}.program();
             std::string mod = P.module.empty() ? "$entry" : P.module;
             std::cout << generateDoc(mod, P, collectDocs(src));
+        } catch (const std::exception& e) { std::cerr << "error: " << e.what() << "\n"; return 1; }
+        return 0;
+    }
+    // Dump the parsed AST as flat S-expressions (ground truth for the self-hosted parser rgparser.rg).
+    if (argc >= 3 && std::string(argv[1]) == "--ast") {
+        std::ifstream f(argv[2]);
+        if (!f) { std::cerr << "cannot open " << argv[2] << "\n"; return 2; }
+        std::stringstream ss; ss << f.rdbuf(); std::string src = ss.str();
+        try {
+            Parsed P = Parser{lex(src)}.program();
+            std::cout << dumpAst(P.module.empty() ? "$entry" : P.module, P);
         } catch (const std::exception& e) { std::cerr << "error: " << e.what() << "\n"; return 1; }
         return 0;
     }
