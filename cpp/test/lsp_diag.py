@@ -35,7 +35,7 @@ send({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{}}}
 while read_message(p.stdout).get("id") != 1: pass
 send({"jsonrpc":"2.0","method":"initialized","params":{}})
 
-DOC = os.path.join(ROOT, "examples", "typeerrors.rg")
+DOC = os.path.join(ROOT, "examples", "errors", "typeerrors.rg")
 URI = "file://" + DOC
 send({"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":URI,"languageId":"rosegold","version":1,"text":open(DOC).read()}}})
 d = next_diag()

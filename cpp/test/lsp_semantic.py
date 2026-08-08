@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Exercises the richer LSP capabilities: semantic tokens, document highlight,
-# and folding ranges on examples/lsp_demo.rg.
+# and folding ranges on examples/features/lsp_demo.rg.
 import json, os, subprocess
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BIN  = os.path.join(ROOT, "cpp", "rosegoldc")
-DOC  = os.path.join(ROOT, "examples", "lsp_demo.rg")
+DOC  = os.path.join(ROOT, "examples", "features", "lsp_demo.rg")
 URI  = "file://" + DOC
 LEGEND = ["type", "class", "enum", "interface", "function", "method", "property", "variable", "parameter"]
 LINES = open(DOC).read().split("\n")

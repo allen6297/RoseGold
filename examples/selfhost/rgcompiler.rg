@@ -793,7 +793,7 @@ class Compiler:
             j = j + 1
 
 func main():
-    var src = readFile("examples/compile_sample.rg")
+    var src = readFile("examples/selfhost/compile_sample.rg")
     var lx = Lexer(src)
     lx.run()
     var ps = Parser(lx.toks)

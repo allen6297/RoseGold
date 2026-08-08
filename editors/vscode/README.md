@@ -35,7 +35,7 @@ Language support for [RoseGold](../../README.md) `.rg` files.
 1. Do the two steps above.
 2. Open this folder (`editors/vscode`) in VS Code.
 3. Press **F5** → a second "Extension Development Host" window opens with the extension loaded.
-4. Open any `.rg` file (e.g. `examples/lsp_demo.rg`): hover a variable, F12 a call, type `.` after an instance, and edit to see live diagnostics.
+4. Open any `.rg` file (e.g. `examples/features/lsp_demo.rg`): hover a variable, F12 a call, type `.` after an instance, and edit to see live diagnostics.
 
 ## Install locally
 Copy or symlink this folder into your extensions directory (after `npm install`), then reload VS Code:

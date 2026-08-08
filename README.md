@@ -50,11 +50,15 @@ cpp/
   src/               the compiler + VM (one header per stage: value · lexer · ast ·
                      parser · types · compiler · vm) + main.cpp, plus ffi.hpp
                      (native FFI), runtime.hpp (embeddable runtime), lsp.hpp
-  embed/             C++ host-embedding demos (engine/game/hotreload) + their scripts
+  embed/             C++ host-embedding demos (engine/game/hotreload/externdemo) + their scripts
   test/              run_tests.py (golden test harness) · golden/ (committed
-                     snapshots) · LSP protocol test drivers (Python)
-examples/            .rg programs: feature demos, the flagship prog.rg, multi-file
-                     module fixtures (core/, graphics/), self-hosting fragments
+                     snapshots) · LSP/DAP protocol test drivers (Python)
+examples/            .rg programs, organized into subdirectories:
+  (top level)        the guided tour.rg, flagship prog.rg, shared util.rg
+  features/          one feature per file (traits, generics, coroutines, signals, …)
+  selfhost/          RoseGold's own lexer/parser/checker/compiler + their fixtures
+  modules/           multi-file module-system fixtures (with core/, graphics/)
+  errors/            deliberate-error fixtures the front end must reject
 editors/
   vscode/            VS Code extension (LSP client)
   jetbrains/         IntelliJ / JetBrains plugin (LSP via LSP4IJ)
@@ -120,12 +124,12 @@ make update-golden   # regenerate golden snapshots after an intended change
 `make test` (also run in CI on every push) is a single self-checking harness
 (`cpp/test/run_tests.py`) that:
 
-- **golden-snapshots** every runnable `examples/*.rg` — its stdout is diffed
-  against a committed snapshot under `cpp/test/golden/`, so any change in
-  behavior is caught, not just crashes;
-- asserts the **error fixtures** (`typeerrors`, `trait_errors`, `broken`,
-  `client`, `consumer`) are still rejected by the front end, snapshotting their
-  diagnostics;
+- **golden-snapshots** every runnable example under `examples/` (searched
+  recursively) — its stdout is diffed against a committed snapshot under
+  `cpp/test/golden/`, so any change in behavior is caught, not just crashes;
+- asserts the **error fixtures** (`errors/typeerrors`, `errors/trait_errors`,
+  `modules/broken`, `modules/client`, `modules/consumer`, `selfhost/check_sample`)
+  are still rejected by the front end, snapshotting their diagnostics;
 - cross-checks **C++/Python parity** on every example the Python oracle supports;
 - snapshots the **LSP drivers** and the **embedding demos**;
 - runs a **builtin-consistency guard** that verifies each builtin is wired
@@ -136,9 +140,11 @@ make update-golden   # regenerate golden snapshots after an intended change
 After a deliberate behavior change, run `make update-golden` and review the diff
 before committing.
 
-All `.rg` programs live in `examples/`: the runnable flagship `prog.rg`, feature
-showcases (traits, coroutines, `game.rg`, …), multi-file module-system fixtures
-(`app.rg`/`util.rg`, `core/`, `graphics/`), and `typeerrors.rg` (deliberate type errors).
+All `.rg` programs live in `examples/`: the runnable flagship `prog.rg` and
+guided `tour.rg` at the top, feature showcases under `features/` (traits,
+coroutines, `game.rg`, …), the self-hosted pipeline under `selfhost/`, multi-file
+module-system fixtures under `modules/` (`app.rg`, `core/`, `graphics/`), and
+deliberate-error fixtures under `errors/` (`typeerrors.rg`, …).
 
 ## Native runtime (C++)
 
@@ -162,7 +168,7 @@ under this VM and the Python interpreter. It also includes a **static type
 checker** (typed AST + generic inference + visibility) that gates execution, so
 `rosegoldc` is a complete, self-contained compiler + runtime with no Python
 dependency — and it reports the same type errors as the Python front-end
-(verified on `examples/typeerrors.rg`).
+(verified on `examples/errors/typeerrors.rg`).
 
 ## Editor support
 
@@ -172,20 +178,19 @@ real name/visibility/type errors inline. See its README to load it.
 
 ## Self-hosting
 
-Fragments of RoseGold's own front-end, written in RoseGold and run natively
-(output byte-identical to the Python engine):
-- `examples/bootstrap.rg` — a lexer that streams tokens from an embedded string.
-- `examples/bootstrap2.rg` — a lexer that **reads a real `.rg` file** and builds a **token list**, using the standard library.
-- `examples/rglexer.rg` — a **faithful RoseGold lexer** (a real port of the C++ lexer, not a toy): it strips line/block comments, implements the **offside rule** (INDENT/DEDENT/NEWLINE via an indentation stack, with `(`/`[` suppressing newlines), and handles two-char operators, string escapes, and floats. Its token stream is **byte-identical to `rosegoldc --tokens`** (the test harness diffs the two) — the lexer stage of RoseGold, self-hosted.
-- `examples/rgparser.rg` — a **RoseGold parser written in RoseGold** (self-hosting rung 2): it lexes (via the ported offside lexer) and recursive-descent parses a core subset — module + globals + functions; `var`/`assign`/`return`/`if`-`elif`-`else`/`while`/`for`/`expr`/`break`/`continue`; and expressions across the full precedence ladder with calls, indexing, member access, and list literals — emitting an AST **byte-identical to `rosegoldc --ast`** (`examples/parse_sample.rg` is the fixture; the harness diffs the two). The parser stage of RoseGold, self-hosted.
-- `examples/rgchecker.rg` — a **RoseGold type checker written in RoseGold** (self-hosting rung 3): lexes + parses a functions-only subset into an AST, then does a two-pass check (collect signatures, then check bodies) reporting **name-resolution and call errors** (undefined name, call arity, argument-type mismatch) **byte-identical to `rosegoldc --check`** (`examples/check_sample.rg` is the fixture; the harness diffs the two). The type-checker stage of RoseGold, self-hosted — name resolution + call checking.
-- `examples/rgcompiler.rg` — a **RoseGold bytecode compiler written in RoseGold** (self-hosting rung 4, the last): lexes + parses a functions-only subset, then compiles each function to stack-VM bytecode — replicating local-slot assignment, the monotonic constant pool, operator/builtin/`CALL` emission, and if/while jump patching — producing a disassembly **byte-identical to `rosegoldc --bytecode`** (`examples/compile_sample.rg` is the fixture; the harness diffs the two). The compiler stage of RoseGold, self-hosted. **The entire front-and-back-end pipeline — lex → parse → check → compile — now exists in RoseGold, each stage proven identical to the canonical C++ implementation.**
-- `examples/calc.rg` — a full **tokenize → recursive-descent parse → evaluate** pipeline for arithmetic, building a **recursive enum AST** and walking it with `match`. The "parser + AST + eval" milestone — the shape of the real front-end.
-- `examples/mini.rg` — the calc pipeline plus **statements and variables**, using `Map<String, Int>` as the environment.
-- `examples/interp.rg` — a **Turing-complete** little imperative language (`if` / `while` / comparisons / reassignment, `end`-delimited blocks) interpreted in RoseGold; runs real algorithms (factorial, summation) via nested-block recursion over the AST.
+RoseGold's own front-and-back-end pipeline, **written in RoseGold** and run
+natively — each stage proven **byte-identical to the canonical C++ stage** it
+mirrors (the test harness diffs the two). They live in `examples/selfhost/`:
+
+- `rglexer.rg` — a **faithful RoseGold lexer** (a real port of the C++ lexer, not a toy): it strips line/block comments, implements the **offside rule** (INDENT/DEDENT/NEWLINE via an indentation stack, with `(`/`[` suppressing newlines), and handles two-char operators, string escapes, and floats. Its token stream is **byte-identical to `rosegoldc --tokens`** — the lexer stage of RoseGold, self-hosted.
+- `rgparser.rg` — a **RoseGold parser written in RoseGold** (rung 2): it lexes (via the ported offside lexer) and recursive-descent parses a core subset — module + globals + functions; `var`/`assign`/`return`/`if`-`elif`-`else`/`while`/`for`/`expr`/`break`/`continue`; and expressions across the full precedence ladder with calls, indexing, member access, and list literals — emitting an AST **byte-identical to `rosegoldc --ast`** (`selfhost/parse_sample.rg` is the fixture).
+- `rgchecker.rg` — a **RoseGold type checker written in RoseGold** (rung 3): lexes + parses a functions-only subset into an AST, then does a two-pass check (collect signatures, then check bodies) reporting **name-resolution and call errors** (undefined name, call arity, argument-type mismatch) **byte-identical to `rosegoldc --check`** (`selfhost/check_sample.rg` is the fixture).
+- `rgcompiler.rg` — a **RoseGold bytecode compiler written in RoseGold** (rung 4, the last): lexes + parses a functions-only subset, then compiles each function to stack-VM bytecode — replicating local-slot assignment, the monotonic constant pool, operator/builtin/`CALL` emission, and if/while jump patching — producing a disassembly **byte-identical to `rosegoldc --bytecode`** (`selfhost/compile_sample.rg` is the fixture).
+
+**The entire pipeline — lex → parse → check → compile — now exists in RoseGold, each stage proven identical to the canonical C++ implementation.**
 
 ```bash
-./cpp/rosegoldc examples/bootstrap2.rg   # tokenizes examples/fib.rg -> 94 tokens
+./cpp/rosegoldc examples/selfhost/rglexer.rg     # tokenizes examples/prog.rg; matches `--tokens` byte-for-byte
 ```
 
 ### Standard library
@@ -197,7 +202,7 @@ stay in lockstep:
 - **strings** — `str`, `ord`, `chr`, `substr`, `split`, `int`
 - **file I/O** — `readFile`, `writeFile`
 
-`examples/stdlib.rg` and `examples/maps.rg` exercise them. This clears
+`examples/features/stdlib.rg` and `examples/features/maps.rg` exercise them. This clears
 the blockers that stood in the way of self-hosting — **file I/O**, **growable
 lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 (large) work of porting the compiler itself to RoseGold on top of the stdlib.
@@ -214,11 +219,11 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ editor support — a native **language server** (`rosegoldc --lsp`): diagnostics, hover, go-to-definition (incl. locals/params), completion, document symbols/outline, signature help, workspace-wide find-references + rename, semantic tokens, document highlight, folding, inlay hints, **formatting** (canonical offside-rule whitespace; also `rosegoldc --format`), and **code actions** (did-you-mean quick fixes for undefined names/types; "add inferred type annotation" refactor). Clients: **VS Code** extension (`editors/vscode/`) and a **JetBrains** plugin (`editors/jetbrains/`, via LSP4IJ) — both drive the same server
 - ✅ debugger — a native **Debug Adapter** (`rosegoldc --dap`, DAP over stdio): line breakpoints, step in/over/out, call stack, and local/global variable inspection with **drill-in** (expand objects into fields, lists/maps into elements, enum variants into payloads) + expression evaluation, driven by a debug hook in the VM (per-instruction line table + per-function local-name table). VS Code launches it via a `rosegold` debug type (F5 on a `.rg` file)
 - ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O, a math/game stdlib (`sqrt`/`sin`/`lerp`/`clamp`/`random`/…)
-- ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `examples/coroutine.rg`, `game.rg`
+- ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `examples/features/coroutine.rg`, `features/game.rg`
 - ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`). Scripts declare the host's functions with **`extern func`** — type-checked standalone, bound by name at runtime (`cpp/embed/externdemo.cpp` + `externdemo.rg`)
-- ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a first-class language feature — see below; `examples/signals.rg`)
+- ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a first-class language feature — see below; `examples/features/signals.rg`)
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
-- ✅ self-hosting — the **whole pipeline written in RoseGold**, each stage **byte-identical to the canonical C++ stage**: **lexer** (`rglexer.rg` vs `--tokens`), **parser** (`rgparser.rg` vs `--ast`), **type checker** (`rgchecker.rg` vs `--check`), and **bytecode compiler** (`rgcompiler.rg` vs `--bytecode`) — lex → parse → check → compile, all self-hosted (over a functions-focused subset), plus a full tokenize→parse→eval pipeline over a recursive enum AST
-- ✅ documentation comments — Javadoc-style `##` line / `#/ ... /#` block docs attach to the following declaration; `rosegoldc --doc` renders a Markdown page (with `@param`/`@return`), and the language server shows them on hover; `examples/documented.rg`
+- ✅ self-hosting — the **whole pipeline written in RoseGold**, each stage **byte-identical to the canonical C++ stage**: **lexer** (`rglexer.rg` vs `--tokens`), **parser** (`rgparser.rg` vs `--ast`), **type checker** (`rgchecker.rg` vs `--check`), and **bytecode compiler** (`rgcompiler.rg` vs `--bytecode`) — lex → parse → check → compile, all self-hosted (over a functions-focused subset) and living in `examples/selfhost/`
+- ✅ documentation comments — Javadoc-style `##` line / `#/ ... /#` block docs attach to the following declaration; `rosegoldc --doc` renders a Markdown page (with `@param`/`@return`), and the language server shows them on hover; `examples/features/documented.rg`
 - ✅ test harness + CI — `make test` golden-snapshots every example, asserts the error fixtures fail, cross-checks C++/Python parity, snapshots the LSP + embedding demos, and guards the builtin tables against drift; runs on every push via GitHub Actions
 - ⏳ future: port the full compiler to RoseGold (true self-hosting); trait default-method bodies; primitives implementing built-in traits

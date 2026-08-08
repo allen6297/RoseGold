@@ -782,7 +782,7 @@ class Checker:
         print(out)
 
 func main():
-    var src = readFile("examples/check_sample.rg")
+    var src = readFile("examples/selfhost/check_sample.rg")
     var lx = Lexer(src)
     lx.run()
     var ps = Parser(lx.toks)

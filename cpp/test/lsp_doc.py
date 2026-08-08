@@ -4,7 +4,7 @@ import json, os, subprocess
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BIN  = os.path.join(ROOT, "cpp", "rosegoldc")
-DOC  = os.path.join(ROOT, "examples", "documented.rg")
+DOC  = os.path.join(ROOT, "examples", "features", "documented.rg")
 URI  = "file://" + DOC
 TEXT = open(DOC).read()
 

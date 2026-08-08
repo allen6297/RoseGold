@@ -507,7 +507,7 @@ class Parser:
         return result + globals + funcs
 
 func main():
-    var src = readFile("examples/parse_sample.rg")
+    var src = readFile("examples/selfhost/parse_sample.rg")
     var lx = Lexer(src)
     lx.run()
     var ps = Parser(lx.toks)
