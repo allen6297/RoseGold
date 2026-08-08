@@ -1,0 +1,35 @@
+[hover add (@param/@return doc)]
+```rosegold
+add: func(Int, Int) -> Int
+```
+
+---
+Adds two numbers together.
+
+- `a` — the first addend
+- `b` — the second addend
+- **returns** — their sum
+----
+[hover add — from a call site]
+```rosegold
+add: func(Int, Int) -> Int
+```
+
+---
+Adds two numbers together.
+
+- `a` — the first addend
+- `b` — the second addend
+- **returns** — their sum
+----
+[hover method with a doc]
+```rosegold
+bump: func() -> Int
+```
+
+---
+Increment the counter, clamping at `cap`.
+
+- **returns** — the new count
+----
+[exit] 0

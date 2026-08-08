@@ -3,6 +3,7 @@
 #include "parser.hpp"
 #include "types.hpp"
 #include "format.hpp"
+#include "doc.hpp"
 #include "json.hpp"
 
 // =====================================================================
@@ -48,6 +49,7 @@ struct DocState {
     std::vector<InlayH> inlays;                              // inferred-type hints for the open file
     std::map<std::string, std::string> modFile;             // module key -> source path
     std::set<std::pair<int, int>> enumDecls;                // enum-name positions (enum/variant symbols aren't renamable in v1)
+    std::map<int, std::string> docComments;                 // declaration line -> doc comment (##*** / #/*** */#)
 };
 
 struct Lsp {
@@ -115,6 +117,7 @@ struct Lsp {
     void analyze(const std::string& uri) {
         DocState& d = docs[uri];
         d.occs.clear(); d.inlays.clear(); d.modFile.clear(); d.enumDecls.clear();
+        d.docComments = collectDocs(d.text);
         std::vector<std::tuple<std::string, int, std::string>> diags;
         std::map<std::string, Parsed> mods; std::vector<std::string> order;
         if (loadGraph(d.path, &d.text, mods, order, d.entryMod, d.root, d.modFile, diags)) {
@@ -156,6 +159,11 @@ struct Lsp {
         if (!o) { reply(id, "null"); return; }
         std::string sig = o->name + ": " + tStr(o->ty);
         std::string md = "```rosegold\n" + sig + "\n```";
+        // append the symbol's doc comment (if it's defined in this file and documented)
+        if (o->defMod == it->second.entryMod && o->defLine > 0) {
+            auto dit = it->second.docComments.find(o->defLine);
+            if (dit != it->second.docComments.end() && !dit->second.empty()) md += "\n\n---\n" + docBody(dit->second);
+        }
         reply(id, "{\"contents\":{\"kind\":\"markdown\",\"value\":" + jstr(md) + "}}");
     }
     void onDefinition(const Json& id, const Json& params) {

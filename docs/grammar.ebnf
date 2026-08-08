@@ -28,7 +28,11 @@ BoolLit     = "true" | "false" ;
 
 (* Comments are stripped by the lexer, never reach the parser:
      line   : "#" ... end-of-line
-     block  : "#/" ... "/#"   (may span lines)                  *)
+     block  : "#/" ... "/#"   (may span lines)
+   Doc comments are a special case, also stripped but captured by tooling
+   (rosegoldc --doc, LSP hover) and attached to the next declaration:
+     line doc  : "##***" ... end-of-line
+     block doc : "#/***" ... "/#"   (@param / @return recognized)         *)
 
 (* Keywords (reserved): module import as pub internal private static
    class trait enum extends uses func init var const return pass

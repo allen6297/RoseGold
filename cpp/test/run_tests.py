@@ -153,6 +153,13 @@ def test_selfhost_lexer():
     else:
         print("    (the RoseGold-in-RoseGold lexer matches the canonical lexer, byte-for-byte)")
 
+# ---------------------------------------------------------------- doc generator
+def test_docgen():
+    print("• doc generator (--doc golden)")
+    code, out = run([BIN, "--doc", "examples/documented.rg"])
+    if code != 0: fails.append("docgen: --doc examples/documented.rg failed")
+    else: golden("doc_documented.md", out)
+
 # ---------------------------------------------------------------- builtin guard
 def test_builtins():
     print("• builtin table consistency (compiler ids / type sigs / VM dispatch)")
@@ -183,6 +190,7 @@ test_formatter()
 test_lsp()
 test_embed()
 test_selfhost_lexer()
+test_docgen()
 test_builtins()
 
 print()
