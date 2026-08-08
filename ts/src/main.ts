@@ -9,6 +9,8 @@ import { readFileSync } from "node:fs";
 import { lex } from "./lexer.ts";
 import { Parser } from "./parser.ts";
 import { dumpAst } from "./astdump.ts";
+import { loadModules } from "./modules.ts";
+import { TypeChecker } from "./types.ts";
 
 // Token kinds that carry a value in `--tokens` output; the rest print bare.
 // (STR is intentionally omitted — its decoded value can hold arbitrary bytes,
@@ -50,10 +52,34 @@ function astCmd(path: string): number {
   return 0;
 }
 
+// `rosegold-ts --check <file>` — type-check the entry module + its imports.
+// On failure, print the sorted diagnostics to stderr and exit 1, matching the
+// C++ CLI: `type errors:` then `  <module>[:<line>]: <message>` per error; a
+// module-load failure prints `error: <message>` instead.
+function checkCmd(path: string): number {
+  try {
+    const { mods, order } = loadModules(path);
+    const tc = new TypeChecker(mods, order);
+    tc.build();
+    tc.check();
+    if (tc.errors.length) {
+      let out = "type errors:\n";
+      for (const [mm, ln, msg] of tc.errors) out += ln ? `  ${mm}:${ln}: ${msg}\n` : `  ${mm}: ${msg}\n`;
+      process.stderr.write(out);
+      return 1;
+    }
+  } catch (e) {
+    process.stderr.write("error: " + (e instanceof Error ? e.message : String(e)) + "\n");
+    return 1;
+  }
+  return 0;
+}
+
 function main(argv: string[]): number {
   if (argv[0] === "--tokens" && argv[1]) return tokensCmd(argv[1]);
   if (argv[0] === "--ast" && argv[1]) return astCmd(argv[1]);
-  process.stderr.write("usage: rosegold-ts (--tokens | --ast) <file.rg>\n");
+  if (argv[0] === "--check" && argv[1]) return checkCmd(argv[1]);
+  process.stderr.write("usage: rosegold-ts (--tokens | --ast | --check) <file.rg>\n");
   return 2;
 }
 

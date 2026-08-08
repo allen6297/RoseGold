@@ -1,14 +1,15 @@
-// Front-end parity check: each ported stage's dump must be byte-identical to
-// the canonical C++ `rosegoldc` dump on every example. Same ground-truth
-// discipline the self-hosted .rg pipeline is held to — a stage is "correct"
-// exactly when it matches the canonical dump.
+// Front-end parity check: each ported stage's output must be byte-identical to
+// the canonical C++ `rosegoldc` on every example — same stdout, same stderr, and
+// same exit code. Same ground-truth discipline the self-hosted .rg pipeline is
+// held to: a stage is "correct" exactly when it matches the canonical tool.
 //
-//   --tokens  lexer  (ts/src/lexer.ts)
-//   --ast     parser (ts/src/parser.ts + astdump.ts)
+//   --tokens  lexer   (ts/src/lexer.ts)
+//   --ast     parser  (ts/src/parser.ts + astdump.ts)
+//   --check   checker (ts/src/types.ts + modules.ts)   [diagnostics on stderr]
 //
 //   node ts/test/parity.mjs        (build cpp/rosegoldc first)
 
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { readdirSync } from "node:fs";
 import { join, dirname, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,38 +29,35 @@ function rgFiles(dir) {
   return out;
 }
 
-// Run a command, capturing stdout; never throw on a non-zero exit.
-function run(cmd, args) {
-  try {
-    return { code: 0, out: execFileSync(cmd, args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }) };
-  } catch (e) {
-    return { code: e.status ?? 1, out: e.stdout ?? "" };
-  }
+// Run a command from the repo root, capturing stdout/stderr/exit without throwing.
+// Paths are passed relative to ROOT so diagnostics read the same on both sides.
+function run(cmd, args, extraEnv) {
+  const r = spawnSync(cmd, args, { cwd: ROOT, encoding: "utf8", env: extraEnv ? { ...process.env, ...extraEnv } : process.env });
+  return { code: r.status ?? 1, out: r.stdout ?? "", err: r.stderr ?? "" };
 }
+const same = (a, b) => a.code === b.code && a.out === b.out && a.err === b.err;
 
 const STAGES = [
   { flag: "--tokens", stage: "lexer" },
   { flag: "--ast", stage: "parser" },
+  { flag: "--check", stage: "checker" },
 ];
 
-const files = rgFiles(join(ROOT, "examples")).sort();
+const files = rgFiles(join(ROOT, "examples")).sort().map((f) => relative(ROOT, f));
 let anyFail = false;
 for (const { flag, stage } of STAGES) {
-  let checked = 0;
   const fails = [];
-  for (const f of files) {
-    const c = run(BIN, [flag, f]);
-    if (c.code !== 0) continue;                         // C++ rejects it at this stage — nothing to compare
-    const t = run("node", [MAIN, flag, f]);
-    checked++;
-    if (t.code !== 0 || t.out !== c.out) fails.push(relative(ROOT, f));
+  for (const rel of files) {
+    const c = run(BIN, [flag, rel]);
+    const t = run("node", [MAIN, flag, rel], { NODE_NO_WARNINGS: "1" });
+    if (!same(c, t)) fails.push(rel);
   }
   if (fails.length) {
     anyFail = true;
-    console.error(`✗ ts/${stage} (${flag}): ${fails.length}/${checked} mismatch(es) vs \`rosegoldc ${flag}\``);
+    console.error(`✗ ts/${stage} (${flag}): ${fails.length}/${files.length} mismatch(es) vs \`rosegoldc ${flag}\``);
     for (const f of fails) console.error("    " + f);
   } else {
-    console.log(`✓ ts/${stage} (${flag}): byte-identical to \`rosegoldc ${flag}\` on ${checked} files`);
+    console.log(`✓ ts/${stage} (${flag}): byte-identical to \`rosegoldc ${flag}\` on ${files.length} files`);
   }
 }
 if (anyFail) process.exit(1);

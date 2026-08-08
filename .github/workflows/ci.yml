@@ -30,7 +30,8 @@ jobs:
         run: make test
 
       # Verifies the TypeScript front-end port (ts/) stays byte-identical to the
-      # canonical dumps: lexer vs `rosegoldc --tokens`, parser vs `rosegoldc --ast`,
-      # on every example. Runs after `make test` has built cpp/rosegoldc.
+      # canonical tool on every example — lexer vs `--tokens`, parser vs `--ast`,
+      # checker vs `--check` (stdout, stderr, and exit code). Runs after
+      # `make test` has built cpp/rosegoldc.
       - name: TypeScript front-end parity
         run: node ts/test/parity.mjs
