@@ -1,0 +1,7 @@
+[caps] codeAction=True
+[diagnostics] ["undefined name 'helpr'"]
+[quickfix line 8]
+  - Change 'helpr' to 'helper'   newText='helper' kind=quickfix pref=True
+[refactor line 9]
+  - Add type annotation ': Box'  newText=': Box' kind=refactor.rewrite
+[exit] 0

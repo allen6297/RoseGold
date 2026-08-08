@@ -433,6 +433,119 @@ struct Lsp {
         reply(id, "[{\"range\":" + range + ",\"newText\":" + jstr(formatted) + "}]");
     }
 
+    // --- code actions (quick fixes off diagnostics + a refactor) -------
+    static int editDistance(const std::string& a, const std::string& b) {
+        size_t n = a.size(), m = b.size();
+        std::vector<int> prev(m + 1), cur(m + 1);
+        for (size_t j = 0; j <= m; j++) prev[j] = (int)j;
+        for (size_t i = 1; i <= n; i++) {
+            cur[0] = (int)i;
+            for (size_t j = 1; j <= m; j++) {
+                int c = (a[i - 1] == b[j - 1]) ? 0 : 1;
+                cur[j] = std::min({ prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + c });
+            }
+            std::swap(prev, cur);
+        }
+        return prev[m];
+    }
+    static std::string quotedAfter(const std::string& msg, const std::string& key) {
+        auto p = msg.find(key); if (p == std::string::npos) return "";
+        p += key.size(); auto e = msg.find('\'', p);
+        return e == std::string::npos ? "" : msg.substr(p, e - p);
+    }
+    static bool identChar(char c) { return std::isalnum((unsigned char)c) || c == '_'; }
+    // whole-word column of `name` on 0-based line `ln` of the document, or -1
+    int wordCol(const std::string& text, int ln, const std::string& name) const {
+        int cur = 0; size_t i = 0, start = 0;
+        for (; i <= text.size(); i++) {
+            if (i == text.size() || text[i] == '\n') {
+                if (cur == ln) {
+                    std::string line = text.substr(start, i - start);
+                    for (size_t k = 0; k + name.size() <= line.size(); k++) {
+                        if (line.compare(k, name.size(), name) == 0
+                            && (k == 0 || !identChar(line[k - 1]))
+                            && (k + name.size() == line.size() || !identChar(line[k + name.size()])))
+                            return (int)k;
+                    }
+                    return -1;
+                }
+                cur++; start = i + 1;
+            }
+        }
+        return -1;
+    }
+    void onCodeAction(const Json& id, const Json& params) {
+        std::string uri; if (auto td = params.get("textDocument")) if (auto u = td->get("uri")) uri = u->s;
+        auto it = docs.find(uri); if (it == docs.end()) { reply(id, "[]"); return; }
+        const DocState& d = it->second;
+        int rLo = 0, rHi = 0;
+        if (auto r = params.get("range")) { if (auto s = r->get("start")) if (auto l = s->get("line")) rLo = (int)l->num; if (auto e = r->get("end")) if (auto l = e->get("line")) rHi = (int)l->num; }
+
+        // candidate identifier spellings in scope: every resolved occurrence + the builtins
+        static const char* BUILTINS[] = { "print","len","range","push","pop","str","ord","chr","substr","split","int",
+            "readFile","writeFile","map","set","get","has","keys","remove","sqrt","sin","cos","tan","atan2","floor",
+            "ceil","round","pow","abs","min","max","lerp","clamp","random","randint","srandom","coroutine","resume","done",
+            "vec2","vec3","dot","vlen","norm" };
+        std::set<std::string> names, typeNames = { "Int","Float","String","Bool","Void","List","Map" };
+        for (auto& o : d.occs) { names.insert(o.name); if (!o.name.empty() && std::isupper((unsigned char)o.name[0])) typeNames.insert(o.name); }
+        for (auto* b : BUILTINS) names.insert(b);
+
+        auto suggestFor = [&](const std::string& bad, const std::set<std::string>& pool) {
+            std::vector<std::pair<int, std::string>> ranked;
+            int thresh = std::max(2, (int)bad.size() / 2);
+            for (auto& c : pool) { if (c == bad) continue; int dst = editDistance(bad, c); if (dst <= thresh) ranked.push_back({ dst, c }); }
+            std::sort(ranked.begin(), ranked.end());
+            if (ranked.size() > 3) ranked.resize(3);
+            return ranked;
+        };
+
+        std::string acts;
+        auto add = [&](const std::string& json) { if (!acts.empty()) acts += ","; acts += json; };
+
+        // 1. did-you-mean quick fixes off "undefined name" / "unknown type" diagnostics
+        if (auto ctx = params.get("context")) if (auto ds = ctx->get("diagnostics")) if (ds->t == Json::ARR) {
+            for (auto& dg : ds->a) {
+                std::string msg = dg.get("message") ? dg.get("message")->s : "";
+                int dl = 0, sc = 0, el = 0, ec = 0;
+                if (auto r = dg.get("range")) {
+                    if (auto s = r->get("start")) { if (auto l = s->get("line")) dl = (int)l->num; if (auto c = s->get("character")) sc = (int)c->num; }
+                    if (auto e = r->get("end"))   { if (auto l = e->get("line")) el = (int)l->num; if (auto c = e->get("character")) ec = (int)c->num; }
+                }
+                std::string diagJson = "{\"range\":{\"start\":{\"line\":" + std::to_string(dl) + ",\"character\":" + std::to_string(sc) + "},"
+                                       "\"end\":{\"line\":" + std::to_string(el) + ",\"character\":" + std::to_string(ec) + "}},"
+                                       "\"severity\":1,\"source\":\"rosegold\",\"message\":" + jstr(msg) + "}";
+
+                std::vector<std::pair<std::string, const std::set<std::string>*>> kinds = {
+                    { "undefined name '", &names }, { "unknown type '", &typeNames } };
+                for (auto& kd : kinds) {
+                    std::string bad = quotedAfter(msg, kd.first); if (bad.empty()) continue;
+                    int col = wordCol(d.text, dl, bad); if (col < 0) continue;
+                    std::string span = "{\"start\":{\"line\":" + std::to_string(dl) + ",\"character\":" + std::to_string(col) + "},"
+                                       "\"end\":{\"line\":" + std::to_string(dl) + ",\"character\":" + std::to_string(col + (int)bad.size()) + "}}";
+                    bool first = true;
+                    for (auto& sug : suggestFor(bad, *kd.second)) {
+                        std::string edit = "{\"changes\":{" + jstr(uri) + ":[{\"range\":" + span + ",\"newText\":" + jstr(sug.second) + "}]}}";
+                        add("{\"title\":" + jstr("Change '" + bad + "' to '" + sug.second + "'") + ",\"kind\":\"quickfix\","
+                            + (diagJson.empty() ? "" : "\"diagnostics\":[" + diagJson + "],")
+                            + (first ? "\"isPreferred\":true," : "") + "\"edit\":" + edit + "}");
+                        first = false;
+                    }
+                }
+            }
+        }
+
+        // 2. refactor: add an inferred type annotation on an un-annotated var in range
+        for (auto& h : d.inlays) {
+            int ln = h.line - 1; if (ln < rLo || ln > rHi) continue;
+            std::string pos = "{\"line\":" + std::to_string(ln) + ",\"character\":" + std::to_string(h.col - 1) + "}";
+            std::string span = "{\"start\":" + pos + ",\"end\":" + pos + "}";
+            std::string edit = "{\"changes\":{" + jstr(uri) + ":[{\"range\":" + span + ",\"newText\":" + jstr(h.label) + "}]}}";
+            add("{\"title\":" + jstr("Add type annotation '" + h.label + "'") + ",\"kind\":\"refactor.rewrite\",\"edit\":" + edit + "}");
+        }
+
+        reply(id, "[" + acts + "]");
+    }
+
     void onFoldingRange(const Json& id, const Json& params) {
         std::string uri; if (auto td = params.get("textDocument")) if (auto u = td->get("uri")) uri = u->s;
         auto it = docs.find(uri); if (it == docs.end()) { reply(id, "[]"); return; }
@@ -590,6 +703,7 @@ struct Lsp {
                             "\"documentSymbolProvider\":true,\"documentHighlightProvider\":true,"
                             "\"foldingRangeProvider\":true,\"inlayHintProvider\":true,"
                             "\"documentFormattingProvider\":true,"
+                            "\"codeActionProvider\":{\"codeActionKinds\":[\"quickfix\",\"refactor.rewrite\"]},"
                             "\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"type\",\"class\",\"enum\",\"interface\",\"function\",\"method\",\"property\",\"variable\",\"parameter\"],\"tokenModifiers\":[]},\"full\":true},"
                             "\"renameProvider\":{\"prepareProvider\":true},"
                             "\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\"]},"
@@ -633,6 +747,8 @@ struct Lsp {
                 onInlayHint(*idp, *params);
             } else if (method == "textDocument/formatting") {
                 onFormatting(*idp, *params);
+            } else if (method == "textDocument/codeAction") {
+                onCodeAction(*idp, *params);
             } else if (idp) {
                 reply(*idp, "null");                         // unknown request: null result
             }
