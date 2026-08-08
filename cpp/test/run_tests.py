@@ -171,6 +171,15 @@ def test_selfhost_checker():
     else:
         print("    (the RoseGold-in-RoseGold checker matches --check, byte-for-byte)")
 
+def test_selfhost_compiler():
+    print("• self-hosted bytecode compiler parity (rgcompiler.rg vs C++ --bytecode)")
+    _, rg = run([BIN, "examples/rgcompiler.rg"])                # RoseGold compiler compiling examples/compile_sample.rg
+    _, cc = run([BIN, "--bytecode", "examples/compile_sample.rg"])  # the canonical compiler on the same file
+    if rg != cc:
+        fails.append("selfhost/rgcompiler: bytecode differs from --bytecode on compile_sample.rg")
+    else:
+        print("    (the RoseGold-in-RoseGold compiler matches --bytecode, byte-for-byte)")
+
 # ---------------------------------------------------------------- extern (FFI)
 def test_extern():
     print("• extern declarations (standalone --check, no host)")
@@ -216,6 +225,7 @@ test_embed()
 test_selfhost_lexer()
 test_selfhost_parser()
 test_selfhost_checker()
+test_selfhost_compiler()
 test_extern()
 test_docgen()
 test_builtins()

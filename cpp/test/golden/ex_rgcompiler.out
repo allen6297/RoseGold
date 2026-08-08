@@ -1,0 +1,46 @@
+func bigger nlocals=2
+  0: LOAD 0 0
+  1: LOAD 1 0
+  2: LT 0 0
+  3: JFALSE 7 0
+  4: LOAD 1 0
+  5: RET 0 0
+  6: JUMP 7 0
+  7: LOAD 0 0
+  8: RET 0 0
+  9: PUSHNIL 0 0
+  10: RET 0 0
+func sumTo nlocals=3
+  0: CONST 0 0
+  1: STORE 1 0
+  2: CONST 1 0
+  3: STORE 2 0
+  4: LOAD 2 0
+  5: LOAD 0 0
+  6: LE 0 0
+  7: JFALSE 17 0
+  8: LOAD 1 0
+  9: LOAD 2 0
+  10: ADD 0 0
+  11: STORE 1 0
+  12: LOAD 2 0
+  13: CONST 2 0
+  14: ADD 0 0
+  15: STORE 2 0
+  16: JUMP 4 0
+  17: LOAD 1 0
+  18: RET 0 0
+  19: PUSHNIL 0 0
+  20: RET 0 0
+func main nlocals=0
+  0: CONST 3 0
+  1: CONST 4 0
+  2: CALL 0 2
+  3: BUILTIN 0 1
+  4: POP 0 0
+  5: CONST 5 0
+  6: CALL 1 1
+  7: BUILTIN 0 1
+  8: POP 0 0
+  9: PUSHNIL 0 0
+  10: RET 0 0

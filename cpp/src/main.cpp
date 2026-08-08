@@ -2,6 +2,7 @@
 #include "format.hpp"
 #include "doc.hpp"
 #include "astdump.hpp"
+#include "bytecodedump.hpp"
 #include "lsp.hpp"
 #include "dap.hpp"
 
@@ -31,6 +32,17 @@ int main(int argc, char** argv) {
             Parsed P = Parser{lex(src)}.program();
             std::string mod = P.module.empty() ? "$entry" : P.module;
             std::cout << generateDoc(mod, P, collectDocs(src));
+        } catch (const std::exception& e) { std::cerr << "error: " << e.what() << "\n"; return 1; }
+        return 0;
+    }
+    // Dump compiled bytecode per function (ground truth for the self-hosted compiler rgcompiler.rg).
+    if (argc >= 3 && std::string(argv[1]) == "--bytecode") {
+        try {
+            std::map<std::string, Parsed> mods; std::vector<std::string> order;
+            loadModules(argv[2], mods, order);
+            Program prog; std::map<std::string, int> gf, inf;
+            buildProgram(mods, order, prog, gf, inf);
+            std::cout << dumpBytecode(prog);
         } catch (const std::exception& e) { std::cerr << "error: " << e.what() << "\n"; return 1; }
         return 0;
     }
