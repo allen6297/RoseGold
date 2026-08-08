@@ -65,6 +65,10 @@ struct Dbg {
     size_t stepDepth = 0;
     // inspection context — valid only while stopped
     std::vector<Value>* G = nullptr; std::vector<Value>* S = nullptr; std::vector<Frame>* F = nullptr;
+    // composite-value references, so the client can drill into objects/lists/maps.
+    // Handed out lazily as composites are shown; reset at each stop (the values
+    // they point at only stay valid while the VM is paused).
+    std::map<int, Value> valueRefs; int nextValueRef = 1000;
 
     static std::string canon(const std::string& p) { std::error_code ec; auto c = std::filesystem::weakly_canonical(p, ec); return ec ? p : c.string(); }
     static std::string modOf(const std::string& fn) { auto s = fn.find("::"); return s == std::string::npos ? "" : fn.substr(0, s); }
@@ -130,34 +134,64 @@ struct Dbg {
         return "{\"scopes\":[{\"name\":\"Locals\",\"variablesReference\":" + std::to_string(2 + fid) + ",\"expensive\":false},"
                "{\"name\":\"Globals\",\"variablesReference\":1,\"expensive\":false}]}";
     }
+    // A composite value (object / list / map / enum variant) gets a fresh
+    // variablesReference so the client can drill into it; scalars stay leaves (0).
+    static bool isComposite(const Value& v) {
+        return std::holds_alternative<std::shared_ptr<Instance>>(v)
+            || std::holds_alternative<std::shared_ptr<ListObj>>(v)
+            || std::holds_alternative<std::shared_ptr<MapObj>>(v)
+            || std::holds_alternative<std::shared_ptr<VariantVal>>(v);
+    }
+    int refFor(const Value& v) { if (!isComposite(v)) return 0; int r = nextValueRef++; valueRefs[r] = v; return r; }
+    void childrenOf(const Value& v, std::vector<std::pair<std::string, Value>>& out) {
+        if (auto p = std::get_if<std::shared_ptr<Instance>>(&v)) {
+            Instance& I = **p;
+            if (I.clsIndex >= 0 && I.clsIndex < (int)prog.classes.size())          // declaration order
+                for (auto& fn : prog.classes[I.clsIndex].fieldNames) { auto f = I.fields.find(fn); if (f != I.fields.end()) out.push_back({fn, f->second}); }
+            else for (auto& f : I.fields) out.push_back({f.first, f.second});
+        } else if (auto p = std::get_if<std::shared_ptr<ListObj>>(&v)) {
+            auto& L = **p; for (size_t i = 0; i < L.items.size(); i++) out.push_back({"[" + std::to_string(i) + "]", L.items[i]});
+        } else if (auto p = std::get_if<std::shared_ptr<MapObj>>(&v)) {
+            auto& M = **p; for (auto& kv : M.items) out.push_back({toStr(kv.first), kv.second});
+        } else if (auto p = std::get_if<std::shared_ptr<VariantVal>>(&v)) {
+            auto& V = **p; for (size_t i = 0; i < V.vals.size(); i++) out.push_back({"[" + std::to_string(i) + "]", V.vals[i]});
+        }
+    }
+    std::string emitVars(const std::vector<std::pair<std::string, Value>>& items) {
+        std::string vars;
+        for (auto& it : items) { if (!vars.empty()) vars += ",";
+            vars += "{\"name\":" + jstr(it.first) + ",\"value\":" + jstr(toStr(it.second)) + ",\"variablesReference\":" + std::to_string(refFor(it.second)) + "}"; }
+        return "{\"variables\":[" + vars + "]}";
+    }
     std::string variables(const Json& req) {
         int ref = 0; if (auto a = req.get("arguments")) if (auto r = a->get("variablesReference")) ref = (int)r->num;
-        std::string vars;
-        auto add = [&](const std::string& name, const std::string& val) { if (!vars.empty()) vars += ","; vars += "{\"name\":" + jstr(name) + ",\"value\":" + jstr(val) + ",\"variablesReference\":0}"; };
-        if (ref == 1) {                                      // globals
-            if (G) for (auto& gp : globalNames) if (gp.first < (int)G->size()) add(gp.second, toStr((*G)[gp.first]));
+        std::vector<std::pair<std::string, Value>> items;
+        if (ref >= 1000) {                                   // drill into a stored composite
+            auto it = valueRefs.find(ref); if (it != valueRefs.end()) childrenOf(it->second, items);
+        } else if (ref == 1) {                                // globals
+            if (G) for (auto& gp : globalNames) if (gp.first < (int)G->size()) items.push_back({gp.second, (*G)[gp.first]});
         } else if (ref >= 2 && F) {                           // locals of frame (ref - 2)
             int fid = ref - 2, n = (int)F->size();
             if (fid >= 0 && fid < n) {
                 Frame& fr = (*F)[n - 1 - fid]; auto& names = fr.fn->localNames;
                 for (int slot = 0; slot < (int)names.size(); slot++) {
                     const std::string& nm = names[slot]; if (nm.empty() || nm[0] == '$') continue;   // skip compiler temporaries
-                    int idx = fr.base + slot; if (S && idx >= 0 && idx < (int)S->size()) add(nm, toStr((*S)[idx]));
+                    int idx = fr.base + slot; if (S && idx >= 0 && idx < (int)S->size()) items.push_back({nm, (*S)[idx]});
                 }
             }
         }
-        return "{\"variables\":[" + vars + "]}";
+        return emitVars(items);
     }
-    bool evalName(const Json& req, std::string& out) {   // resolve a bare variable name in the selected frame / globals
+    bool evalValue(const Json& req, Value& out) {   // resolve a bare variable name in the selected frame / globals
         auto a = req.get("arguments"); std::string expr = a && a->get("expression") ? a->get("expression")->s : "";
         int fid = a && a->get("frameId") ? (int)a->get("frameId")->num : 0;
         size_t b = expr.find_first_not_of(" \t"), e = expr.find_last_not_of(" \t");
         if (b == std::string::npos) return false; expr = expr.substr(b, e - b + 1);
         if (F) { int n = (int)F->size();
             if (fid >= 0 && fid < n) { Frame& fr = (*F)[n - 1 - fid]; auto& names = fr.fn->localNames;
-                for (int slot = 0; slot < (int)names.size(); slot++) if (names[slot] == expr) { int idx = fr.base + slot; if (S && idx < (int)S->size()) { out = toStr((*S)[idx]); return true; } } }
+                for (int slot = 0; slot < (int)names.size(); slot++) if (names[slot] == expr) { int idx = fr.base + slot; if (S && idx < (int)S->size()) { out = (*S)[idx]; return true; } } }
         }
-        if (G) for (auto& gp : globalNames) if (gp.second == expr && gp.first < (int)G->size()) { out = toStr((*G)[gp.first]); return true; }
+        if (G) for (auto& gp : globalNames) if (gp.second == expr && gp.first < (int)G->size()) { out = (*G)[gp.first]; return true; }
         return false;
     }
     void handleCommon(const Json& req) {
@@ -166,7 +200,7 @@ struct Dbg {
         else if (cmd == "stackTrace") response(req, stackTrace());
         else if (cmd == "scopes") response(req, scopes(req));
         else if (cmd == "variables") response(req, variables(req));
-        else if (cmd == "evaluate") { std::string v; if (evalName(req, v)) response(req, "{\"result\":" + jstr(v) + ",\"variablesReference\":0}"); else response(req, "{}", false); }
+        else if (cmd == "evaluate") { Value v; if (evalValue(req, v)) response(req, "{\"result\":" + jstr(toStr(v)) + ",\"variablesReference\":" + std::to_string(refFor(v)) + "}"); else response(req, "{}", false); }
         else if (cmd == "disconnect") { response(req, "{}"); std::exit(0); }
         else if (cmd == "source") response(req, "{\"content\":\"\"}");
         else response(req, "{}");
@@ -206,6 +240,7 @@ struct Dbg {
         if (reason.empty()) return;
 
         flushOutput();
+        valueRefs.clear(); nextValueRef = 1000;              // previous stop's drill-in refs are now stale
         G = &globals; S = &st; F = &frames;
         event("stopped", "{\"reason\":\"" + reason + "\",\"threadId\":1,\"allThreadsStopped\":true}");
         std::string body;

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-# Exercises the Debug Adapter (rosegoldc --dap): breakpoint, call stack,
-# locals/globals, stepIn, next (step over), evaluate, continue, output.
+# Exercises the Debug Adapter (rosegoldc --dap): breakpoints, call stack,
+# locals/globals, stepIn, next (step over), evaluate, continue, output, and
+# drilling into a composite object and a list via variablesReference.
 import json, os, subprocess
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -8,7 +9,7 @@ BIN  = os.path.join(ROOT, "cpp", "rosegoldc")
 PROG = os.path.join(ROOT, "cpp", "test", "fixtures", "debug_me.rg")
 
 p = subprocess.Popen([BIN, "--dap"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-_seq = [0]
+_seq = [0]; EVENTS = []
 def frame(m): b = json.dumps(m).encode(); return b"Content-Length: %d\r\n\r\n%s" % (len(b), b)
 def send(command, **args):
     _seq[0] += 1
@@ -22,7 +23,6 @@ def recv():
         if l == b"": break
         if l.lower().startswith(b"content-length:"): n = int(l.split(b":")[1])
     return json.loads(p.stdout.read(n))
-
 def wait_response(cmd):
     while True:
         m = recv()
@@ -30,7 +30,6 @@ def wait_response(cmd):
         if m.get("type") == "response" and m.get("command") == cmd: return m
         if m.get("type") == "event": EVENTS.append(m)
 def wait_event(name):
-    # look in the buffer first, then read
     for i, e in enumerate(EVENTS):
         if e.get("event") == name: return EVENTS.pop(i)
     while True:
@@ -39,56 +38,48 @@ def wait_event(name):
         if m.get("type") == "event":
             if m.get("event") == name: return m
             EVENTS.append(m)
-EVENTS = []
+
+def variables(ref): send("variables", variablesReference=ref); return wait_response("variables")["body"]["variables"]
+def locals_ref(fid):
+    send("scopes", frameId=fid); sc = wait_response("scopes")["body"]["scopes"]
+    return next(s["variablesReference"] for s in sc if s["name"] == "Locals")
+def fmt(vs): return " ".join("%s=%s" % (v["name"], v["value"]) for v in vs)
+def show_stop(label):
+    ev = wait_event("stopped")
+    send("stackTrace", threadId=1); fr = wait_response("stackTrace")["body"]["stackFrames"]
+    print("[%s] reason=%s  stack: %s" % (label, ev["body"]["reason"], ", ".join("%s:%d" % (f["name"], f["line"]) for f in fr)))
+    return fr
 
 # ---- handshake ----
 send("initialize", clientID="test", adapterID="rosegold")
 caps = wait_response("initialize")["body"]
-print("[caps] configurationDone=%s evaluateForHovers=%s" % (caps.get("supportsConfigurationDoneRequest"), caps.get("supportsEvaluateForHovers")))
+print("[caps] configurationDone=%s" % caps.get("supportsConfigurationDoneRequest"))
 wait_event("initialized")
 send("launch", program=PROG, stopOnEntry=False); wait_response("launch")
-send("setBreakpoints", source={"path": PROG}, breakpoints=[{"line": 10}])
-bps = wait_response("setBreakpoints")["body"]["breakpoints"]
-print("[breakpoints] %s" % [(b["line"], b["verified"]) for b in bps])
+send("setBreakpoints", source={"path": PROG}, breakpoints=[{"line": 17}, {"line": 20}])
+print("[breakpoints] %s" % [b["line"] for b in wait_response("setBreakpoints")["body"]["breakpoints"]])
 send("configurationDone"); wait_response("configurationDone")
 
-def show_stop(reason_label):
-    ev = wait_event("stopped")
-    print("[%s] reason=%s" % (reason_label, ev["body"]["reason"]))
-    send("stackTrace", threadId=1); frames = wait_response("stackTrace")["body"]["stackFrames"]
-    print("  stack: " + ", ".join("%s:%d" % (f["name"], f["line"]) for f in frames))
-    return frames
-
-def locals_of(frame_id, label):
-    send("scopes", frameId=frame_id); scopes = wait_response("scopes")["body"]["scopes"]
-    ref = next(s["variablesReference"] for s in scopes if s["name"] == "Locals")
-    send("variables", variablesReference=ref); vs = wait_response("variables")["body"]["variables"]
-    print("  locals %s: %s" % (label, " ".join("%s=%s" % (v["name"], v["value"]) for v in vs)))
-
-# ---- stop 1: breakpoint at line 10 (in main) ----
-frames = show_stop("stopped")
-locals_of(0, frames[0]["name"])
-send("scopes", frameId=0); scopes = wait_response("scopes")["body"]["scopes"]
-gref = next(s["variablesReference"] for s in scopes if s["name"] == "Globals")
-send("variables", variablesReference=gref); gv = wait_response("variables")["body"]["variables"]
-print("  globals: %s" % (" ".join("%s=%s" % (v["name"], v["value"]) for v in gv) or "(none)"))
-
-# ---- stepIn -> line 4 (into add) ----
+# ---- stop 1: line 17 in main -> step into add, step over ----
+show_stop("stop")
 send("stepIn", threadId=1); wait_response("stepIn")
-frames = show_stop("stepIn")
-locals_of(0, frames[0]["name"])
-
-# ---- next -> line 5 (sum now assigned) ----
+fr = show_stop("stepIn"); print("  locals %s: %s" % (fr[0]["name"], fmt(variables(locals_ref(0)))))
 send("next", threadId=1); wait_response("next")
-frames = show_stop("next")
-locals_of(0, frames[0]["name"])
+fr = show_stop("next"); print("  locals %s: %s" % (fr[0]["name"], fmt(variables(locals_ref(0)))))
 send("evaluate", expression="sum", frameId=0, context="watch")
-ev = wait_response("evaluate")
-print("  eval sum = %s (success=%s)" % (ev["body"].get("result", ""), ev["success"]))
-
-# ---- continue -> program finishes ----
+print("  eval sum = %s" % wait_response("evaluate")["body"]["result"])
 send("continue", threadId=1); wait_response("continue")
-out = wait_event("output"); print("[output] %s" % out["body"]["output"].strip())
+
+# ---- stop 2: line 20 in main -> drill into the object and the list ----
+show_stop("stop")
+lv = variables(locals_ref(0))
+print("  locals main: %s" % fmt(lv))
+pt = next(v for v in lv if v["name"] == "pt")
+print("  drill pt (%s, ref!=0=%s): %s" % (pt["value"], pt["variablesReference"] != 0, fmt(variables(pt["variablesReference"]))))
+nums = next(v for v in lv if v["name"] == "nums")
+print("  drill nums (%s, ref!=0=%s): %s" % (nums["value"], nums["variablesReference"] != 0, fmt(variables(nums["variablesReference"]))))
+send("continue", threadId=1); wait_response("continue")
+print("[output] %s" % wait_event("output")["body"]["output"].strip())
 wait_event("terminated"); print("[terminated]")
 send("disconnect"); wait_response("disconnect")
 p.wait(timeout=5)

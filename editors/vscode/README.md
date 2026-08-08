@@ -19,7 +19,7 @@ Language support for [RoseGold](../../README.md) `.rg` files.
   - **Folding** and **inlay hints** — collapse blocks; inferred types shown after un-annotated `var`s (e.g. `var c = Counter(10)` → `: Counter`).
   - **Formatting** (⇧⌥F, or format-on-save) — canonical offside-rule whitespace: normalizes indentation to 4 spaces per block level, trims trailing whitespace, and collapses blank-line runs, while leaving comments, strings, and inline spacing untouched. RoseGold is preset as the default formatter for `.rg`, so enabling `editor.formatOnSave` just works.
   - **Code actions / quick fixes** (💡, or ⌘.) — for an "undefined name" or "unknown type" error, one-click *did-you-mean* fixes suggest the closest in-scope name (by edit distance); on an un-annotated `var`, an "add type annotation" refactor inserts the inferred type.
-- **Debugging** (F5) — the same binary is also a Debug Adapter (`rosegoldc --dap`). Set breakpoints in the gutter, then F5 to run the current `.rg` file: step in/over/out, inspect the call stack and local/global variables, and evaluate variables in the Watch panel. No `launch.json` needed (F5 debugs the active file); add one via "RoseGold: Launch File" for custom setups.
+- **Debugging** (F5) — the same binary is also a Debug Adapter (`rosegoldc --dap`). Set breakpoints in the gutter, then F5 to run the current `.rg` file: step in/over/out, inspect the call stack and local/global variables (expand objects, lists, maps, and enum variants to drill into their contents), and evaluate variables in the Watch panel. No `launch.json` needed (F5 debugs the active file); add one via "RoseGold: Launch File" for custom setups.
 
 ## Prerequisites
 1. **Build the compiler** (it *is* the language server):

@@ -59,7 +59,7 @@ struct Compiler {
         throw CompileError("cannot assign to '" + name + "'");
     }
 
-    void beginFunc(int fi, const std::vector<std::string>& ps) { curFi = fi; locals.clear(); nextSlot = 0; loops.clear(); for (auto& p : ps) declare(p); }
+    void beginFunc(int fi, const std::vector<std::string>& ps) { curFi = fi; locals.clear(); nextSlot = 0; loops.clear(); curLine = 0; for (auto& p : ps) declare(p); }
     void endFunc() { emit(Op::PUSHNIL); emit(Op::RET); CF().nlocals = nextSlot; }
 
     void compileFunc(int fi, Func& f) { beginFunc(fi, f.params); for (auto& s : f.body) stmt(s); endFunc(); }
@@ -73,7 +73,7 @@ struct Compiler {
         for (auto& s : C.ctorBody) stmt(s);
         emit(Op::LOAD, self); emit(Op::RET); CF().nlocals = nextSlot;
     }
-    void compileGlobals(int fi, std::vector<Stmt>& gs) { beginFunc(fi, {}); for (auto& s : gs) { if (s.hasExpr) expr(*s.expr); else emit(Op::PUSHNIL); Sym sy = (*mc->sym)[s.name]; emit(Op::STOREG, sy.index); } emit(Op::PUSHNIL); emit(Op::RET); CF().nlocals = nextSlot; }
+    void compileGlobals(int fi, std::vector<Stmt>& gs) { beginFunc(fi, {}); for (auto& s : gs) { curLine = s.nameLine ? s.nameLine : (s.expr ? s.expr->line : 0); if (s.hasExpr) expr(*s.expr); else emit(Op::PUSHNIL); Sym sy = (*mc->sym)[s.name]; emit(Op::STOREG, sy.index); } emit(Op::PUSHNIL); emit(Op::RET); CF().nlocals = nextSlot; }
 
     void drainPending() {
         for (size_t k = 0; k < pending.size(); k++) {

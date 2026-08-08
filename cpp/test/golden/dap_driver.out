@@ -1,16 +1,15 @@
-[caps] configurationDone=True evaluateForHovers=True
-[breakpoints] [(10, True)]
-[stopped] reason=breakpoint
-  stack: main:10
-  locals main: x=10 y=32 z=void
-  globals: (none)
-[stepIn] reason=step
-  stack: add:4, main:10
+[caps] configurationDone=True
+[breakpoints] [17, 20]
+[stop] reason=breakpoint  stack: main:17
+[stepIn] reason=step  stack: add:11, main:17
   locals add: a=10 b=32 sum=void
-[next] reason=step
-  stack: add:5, main:10
+[next] reason=step  stack: add:12, main:17
   locals add: a=10 b=32 sum=42
-  eval sum = 42 (success=True)
+  eval sum = 42
+[stop] reason=breakpoint  stack: main:20
+  locals main: x=10 y=32 z=42 pt=<Point> nums=[42, 10, 32]
+  drill pt (<Point>, ref!=0=True): x=3 y=4
+  drill nums ([42, 10, 32], ref!=0=True): [0]=42 [1]=10 [2]=32
 [output] 42
 [terminated]
 [exit] 0
