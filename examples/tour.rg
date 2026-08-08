@@ -1,6 +1,6 @@
 module tour
 
-#/***
+#/
   A guided TOUR of RoseGold in one file. Every section prints its results, so
   running this program is a quick tour of the language:
     enums + match, generics, classes, traits + default methods, operator
@@ -14,16 +14,16 @@ enum Shape:
     Circle(r: Float)
     Rect(w: Float, h: Float)
 
-##*** The area of a shape, by matching on its variant.
-##*** @param s the shape to measure
-##*** @return the area
+## The area of a shape, by matching on its variant.
+## @param s the shape to measure
+## @return the area
 func area(s: Shape) -> Float:
     return match s:
         Circle(r):   3.14159 * r * r
         Rect(w, h):  w * h
 
 # ---------- generics ----------
-##*** A one-slot container generic over its element type.
+## A one-slot container generic over its element type.
 class Box<T>:
     var item: T
     init(x: T):
@@ -34,7 +34,7 @@ class Box<T>:
 # ---------- traits with a default method ----------
 trait Greeter:
     func name(self) -> String
-    ##*** Default greeting, reused by every conformer (overridable).
+    ## Default greeting, reused by every conformer (overridable).
     func greet(self) -> String:
         return "Hello, " + self.name()
 
@@ -67,7 +67,7 @@ class Clock:
             self.tick.emit(i)
 
 # ---------- coroutines ----------
-##*** A generator that yields 0, 1, ..., n-1 across resumes.
+## A generator that yields 0, 1, ..., n-1 across resumes.
 func counter(n: Int):
     var i = 0
     while i < n:

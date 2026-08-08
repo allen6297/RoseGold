@@ -31,8 +31,8 @@ BoolLit     = "true" | "false" ;
      block  : "#/" ... "/#"   (may span lines)
    Doc comments are a special case, also stripped but captured by tooling
    (rosegoldc --doc, LSP hover) and attached to the next declaration:
-     line doc  : "##***" ... end-of-line
-     block doc : "#/***" ... "/#"   (@param / @return recognized)         *)
+     line doc  : "##" ... end-of-line
+     block doc : "#/" ... "/#"   (every #/ block is a doc; @param/@return)  *)
 
 (* Keywords (reserved): module import as pub internal private static
    class trait enum extends uses func init var const return pass

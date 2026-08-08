@@ -66,7 +66,7 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 ## Language at a glance
 
 - Blocks by `:` + indentation — no braces
-- Comments: `#` line, `#/ ... /#` block. **Doc comments** (Javadoc-style): `##*** ...` line, `#/*** ... /#` block — attach to the next declaration, support `@param`/`@return`, render via `rosegoldc --doc`, and show on hover in the editor
+- Comments: `#` line comment. **Doc comments** (Javadoc-style): `## ...` line and `#/ ... /#` block — attach to the next declaration, support `@param`/`@return`, render via `rosegoldc --doc`, and show on hover in the editor
 - Visibility: `pub | internal | private` (default `internal`)
 - `var` / `const` (const must be initialized), with type inference
 - `func name(a: Int) -> Bool:` ; single-expression closures `func(x: Int) => x + 1`
@@ -214,6 +214,6 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a first-class language feature — see below; `examples/signals.rg`)
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
 - ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a **faithful lexer** (`rglexer.rg`, offside rule + comments + escapes, **token-for-token identical to the C++ lexer**), plus a lexer that reads a file into a token list and a full tokenize→parse→eval pipeline over a recursive enum AST
-- ✅ documentation comments — Javadoc-style `##***` line / `#/*** ... /#` block docs attach to the following declaration; `rosegoldc --doc` renders a Markdown page (with `@param`/`@return`), and the language server shows them on hover; `examples/documented.rg`
+- ✅ documentation comments — Javadoc-style `##` line / `#/ ... /#` block docs attach to the following declaration; `rosegoldc --doc` renders a Markdown page (with `@param`/`@return`), and the language server shows them on hover; `examples/documented.rg`
 - ✅ test harness + CI — `make test` golden-snapshots every example, asserts the error fixtures fail, cross-checks C++/Python parity, snapshots the LSP + embedding demos, and guards the builtin tables against drift; runs on every push via GitHub Actions
 - ⏳ future: port the full compiler to RoseGold (true self-hosting); trait default-method bodies; primitives implementing built-in traits

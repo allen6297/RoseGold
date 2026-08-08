@@ -21,27 +21,25 @@ static std::string docTrim(const std::string& s) {
 static std::map<int, std::string> collectDocs(const std::string& raw) {
     std::vector<std::string> lines; { std::string cur; for (char c : raw) { if (c == '\n') { lines.push_back(cur); cur.clear(); } else cur += c; } lines.push_back(cur); }
     std::map<int, std::string> docs;
-    std::string pending; int state = 0;   // 0 none, 1 inside a doc block, 2 inside a normal block
+    std::string pending; int state = 0;   // 0 none, 1 inside a block doc
     for (size_t li = 0; li < lines.size(); li++) {
         int lineNo = (int)li + 1;
         const std::string& raw_line = lines[li];
         std::string s = raw_line; { size_t i = 0; while (i < s.size() && (s[i] == ' ' || s[i] == '\t' || s[i] == '\r')) i++; s = s.substr(i); }
-        if (state == 1) {                              // inside a doc block
+        if (state == 1) {                              // inside a block doc
             size_t c = raw_line.find("/#");
             pending += docTrim(c == std::string::npos ? raw_line : raw_line.substr(0, c)) + "\n";
             if (c != std::string::npos) state = 0;
             continue;
         }
-        if (state == 2) { if (raw_line.find("/#") != std::string::npos) state = 0; continue; }   // inside a normal block
-        if (s.rfind("#/", 0) == 0) {                // doc block open
-            std::string rest = s.substr(5); size_t c = rest.find("/#");
+        if (s.rfind("#/", 0) == 0) {                   // block doc `#/ ... /#` (every #/ block is a doc)
+            std::string rest = s.substr(2); size_t c = rest.find("/#");
             pending += docTrim(c == std::string::npos ? rest : rest.substr(0, c)) + "\n";
             if (c == std::string::npos) state = 1;
             continue;
         }
-        if (s.rfind("#/", 0) == 0) { if (s.find("/#", 2) == std::string::npos) state = 2; continue; }   // normal block
-        if (s.rfind("##", 0) == 0) { pending += docTrim(s.substr(5)) + "\n"; continue; }   // line doc
-        if (!s.empty() && s[0] == '#') continue;       // normal line comment (keeps pending)
+        if (s.rfind("##", 0) == 0) { pending += docTrim(s.substr(2)) + "\n"; continue; }   // line doc `## ...`
+        if (!s.empty() && s[0] == '#') continue;       // normal line comment (single #, keeps pending)
         if (s.empty()) continue;                       // blank (keeps pending)
         if (!pending.empty()) { docs[lineNo] = docTrim(pending); pending.clear(); }   // code line: attach
     }
