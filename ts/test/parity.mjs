@@ -1,7 +1,10 @@
-// Lexer parity check: the TypeScript lexer's `--tokens` output must be
-// byte-identical to the canonical C++ `rosegoldc --tokens` on every example.
-// This is the same ground-truth discipline the self-hosted rglexer.rg is held
-// to — the port is "correct" exactly when it matches the canonical dump.
+// Front-end parity check: each ported stage's dump must be byte-identical to
+// the canonical C++ `rosegoldc` dump on every example. Same ground-truth
+// discipline the self-hosted .rg pipeline is held to — a stage is "correct"
+// exactly when it matches the canonical dump.
+//
+//   --tokens  lexer  (ts/src/lexer.ts)
+//   --ast     parser (ts/src/parser.ts + astdump.ts)
 //
 //   node ts/test/parity.mjs        (build cpp/rosegoldc first)
 
@@ -34,21 +37,29 @@ function run(cmd, args) {
   }
 }
 
-const files = rgFiles(join(ROOT, "examples")).sort();
-let checked = 0;
-const fails = [];
-for (const f of files) {
-  const c = run(BIN, ["--tokens", f]);
-  if (c.code !== 0) continue;                           // C++ rejects it at the lexer — nothing to compare
-  const t = run("node", [MAIN, "--tokens", f]);
-  checked++;
-  if (t.code !== 0 || t.out !== c.out) fails.push(relative(ROOT, f));
-}
+const STAGES = [
+  { flag: "--tokens", stage: "lexer" },
+  { flag: "--ast", stage: "parser" },
+];
 
-console.log(`ts/lexer parity: ${checked} files checked against \`rosegoldc --tokens\``);
-if (fails.length) {
-  console.error(`\n✗ ${fails.length} mismatch(es):`);
-  for (const f of fails) console.error("  " + f);
-  process.exit(1);
+const files = rgFiles(join(ROOT, "examples")).sort();
+let anyFail = false;
+for (const { flag, stage } of STAGES) {
+  let checked = 0;
+  const fails = [];
+  for (const f of files) {
+    const c = run(BIN, [flag, f]);
+    if (c.code !== 0) continue;                         // C++ rejects it at this stage — nothing to compare
+    const t = run("node", [MAIN, flag, f]);
+    checked++;
+    if (t.code !== 0 || t.out !== c.out) fails.push(relative(ROOT, f));
+  }
+  if (fails.length) {
+    anyFail = true;
+    console.error(`✗ ts/${stage} (${flag}): ${fails.length}/${checked} mismatch(es) vs \`rosegoldc ${flag}\``);
+    for (const f of fails) console.error("    " + f);
+  } else {
+    console.log(`✓ ts/${stage} (${flag}): byte-identical to \`rosegoldc ${flag}\` on ${checked} files`);
+  }
 }
-console.log("✓ byte-identical on every file");
+if (anyFail) process.exit(1);

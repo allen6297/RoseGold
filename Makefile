@@ -10,7 +10,7 @@ SRC       = cpp/src/main.cpp
 HEADERS   = $(wildcard cpp/src/*.hpp)
 EMBED     = engine game hotreload externdemo
 
-.PHONY: all build test update-golden run fmt embed clean
+.PHONY: all build test ts-parity update-golden run fmt embed clean
 
 all: build
 
@@ -22,6 +22,12 @@ $(BIN): $(SRC) $(HEADERS)
 # embedding demos, and the builtin-table consistency guard.
 test: build
 	python3 cpp/test/run_tests.py
+
+# Verify the TypeScript front-end port (ts/) is byte-identical to the canonical
+# dumps — lexer vs --tokens, parser vs --ast — on every example. Needs Node >=23.6
+# (kept out of `make test` so the core suite stays node-free).
+ts-parity: build
+	node ts/test/parity.mjs
 
 # Regenerate the committed golden snapshots (do this deliberately after an
 # intended behavior change, then review the diff before committing).

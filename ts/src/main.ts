@@ -7,6 +7,8 @@
 
 import { readFileSync } from "node:fs";
 import { lex } from "./lexer.ts";
+import { Parser } from "./parser.ts";
+import { dumpAst } from "./astdump.ts";
 
 // Token kinds that carry a value in `--tokens` output; the rest print bare.
 // (STR is intentionally omitted — its decoded value can hold arbitrary bytes,
@@ -32,9 +34,26 @@ function tokensCmd(path: string): number {
   return 0;
 }
 
+// `rosegold-ts --ast <file>` — dump the parsed AST as flat S-expressions,
+// module defaulting to "$entry" when the file omits a `module` decl (matches main.cpp).
+function astCmd(path: string): number {
+  let src: string;
+  try { src = readFileSync(path, "utf8"); }
+  catch { process.stderr.write(`cannot open ${path}\n`); return 2; }
+  try {
+    const P = new Parser(lex(src)).program();
+    process.stdout.write(dumpAst(P.module === "" ? "$entry" : P.module, P));
+  } catch (e) {
+    process.stderr.write("error: " + (e instanceof Error ? e.message : String(e)) + "\n");
+    return 1;
+  }
+  return 0;
+}
+
 function main(argv: string[]): number {
   if (argv[0] === "--tokens" && argv[1]) return tokensCmd(argv[1]);
-  process.stderr.write("usage: rosegold-ts --tokens <file.rg>\n");
+  if (argv[0] === "--ast" && argv[1]) return astCmd(argv[1]);
+  process.stderr.write("usage: rosegold-ts (--tokens | --ast) <file.rg>\n");
   return 2;
 }
 

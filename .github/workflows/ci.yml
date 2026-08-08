@@ -14,8 +14,13 @@ jobs:
       - name: Install clang
         run: sudo apt-get update && sudo apt-get install -y clang
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'   # built-in TypeScript type-stripping (>=23.6)
+
       - name: Show toolchain
-        run: clang++ --version && python3 --version
+        run: clang++ --version && python3 --version && node --version
 
       # Builds rosegoldc, golden-snapshots every runnable example, asserts the
       # error fixtures are rejected, cross-checks C++/Python parity on the shared
@@ -23,3 +28,9 @@ jobs:
       # builtin tables stay in sync across compiler / type-checker / VM.
       - name: Run test suite
         run: make test
+
+      # Verifies the TypeScript front-end port (ts/) stays byte-identical to the
+      # canonical dumps: lexer vs `rosegoldc --tokens`, parser vs `rosegoldc --ast`,
+      # on every example. Runs after `make test` has built cpp/rosegoldc.
+      - name: TypeScript front-end parity
+        run: node ts/test/parity.mjs
