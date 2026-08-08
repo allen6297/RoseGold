@@ -1,0 +1,14 @@
+{
+  "name": "rosegold-ts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript port of RoseGold's front-end, verified stage-by-stage against the canonical C++ dump flags (--tokens, --ast, --check).",
+  "scripts": {
+    "tokens": "node src/main.ts --tokens",
+    "test": "node test/parity.mjs"
+  },
+  "engines": {
+    "node": ">=23.6"
+  }
+}
