@@ -29,7 +29,7 @@ like it, powered by the native `rosegoldc --lsp` language server.
 Standard IntelliJ Platform (Gradle) plugin; building downloads the IntelliJ SDK
 and LSP4IJ. Toolchain (pinned & verified building):
 
-- **Gradle 8.13** (wrapper) · **Kotlin 2.2.0** · **IntelliJ Platform Gradle Plugin 2.1.0** · **LSP4IJ 0.20.1**
+- **Gradle 8.13** (wrapper) · **Kotlin 2.2.0** · **IntelliJ Platform Gradle Plugin 2.10.0** · **LSP4IJ 0.20.1**
 - **JDK 21** — builds against IDEA **2025.2** (which runs on JBR 21). `gradle.properties`
   pins `org.gradle.java.home` to a real JDK 21 so the Kotlin compiler never runs
   on a newer JDK it can't parse. Kotlin is **2.2.0** to match 2025.2's jars (which

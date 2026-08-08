@@ -1,7 +1,7 @@
 plugins {
     id("java")
     id("org.jetbrains.kotlin.jvm") version "2.2.0"   // match IDEA 2025.2's bundled Kotlin (its jars carry 2.2.0 metadata)
-    id("org.jetbrains.intellij.platform") version "2.1.0"
+    id("org.jetbrains.intellij.platform") version "2.10.0"   // 2.1.0 mis-parses 2025.2's launch layout (runIde: "Index: 1, Size: 1")
 }
 
 group = "dev.rosegold"
@@ -19,7 +19,7 @@ dependencies {
         intellijIdeaCommunity("2025.2.6")
         // LSP4IJ: the open-source library that runs a language server inside JetBrains IDEs.
         plugin("com.redhat.devtools.lsp4ij:0.20.1")
-        instrumentationTools()   // required by the :instrumentCode task
+        // (instrumentationTools() removed — instrumentation is default-on and auto-resolved in newer plugin versions.)
     }
 }
 
