@@ -38,3 +38,12 @@ intellijPlatform {
 // Optional settings-search pre-index; it launches a headless IDE and is flaky. The
 // IDE builds the index on demand, so skip it.
 tasks.buildSearchableOptions { enabled = false }
+
+// The dev sandbox only needs this plugin + LSP4IJ (pulled in via <depends>).
+// Whitelisting them disables the other bundled plugins (Gradle, Maven, Code With
+// Me, …). That silences the harmless SEVERE at startup where IDEA 2024.2's Gradle
+// compatibility matrix can't parse Java 25 — a platform limitation now that Java
+// 25 exists, unrelated to this plugin. Affects `runIde` only, not the built plugin.
+tasks.runIde {
+    systemProperty("idea.required.plugins.id", "dev.rosegold")
+}
