@@ -10,6 +10,7 @@ editors/vscode/node_modules/
 # JetBrains / Gradle build output
 editors/jetbrains/build/
 editors/jetbrains/.gradle/
+editors/jetbrains/.kotlin/
 
 # IDE settings (machine-specific)
 .idea/

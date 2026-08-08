@@ -1,11 +1,11 @@
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "2.0.21"
+    id("org.jetbrains.kotlin.jvm") version "2.2.0"   // match IDEA 2025.2's bundled Kotlin (its jars carry 2.2.0 metadata)
     id("org.jetbrains.intellij.platform") version "2.1.0"
 }
 
 group = "dev.rosegold"
-version = "0.3.0"
+version = "0.4.0"
 
 repositories {
     mavenCentral()
@@ -14,10 +14,11 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        // IDEA 2024.2 runs on JBR 21, matching the jvmToolchain below.
-        intellijIdeaCommunity("2024.2")
+        // IDEA 2025.2 runs on JBR 21, matching the jvmToolchain below. (2025.x's
+        // JavaVersion parser understands Java 25, unlike 2024.2 — see the runIde note.)
+        intellijIdeaCommunity("2025.2.6")
         // LSP4IJ: the open-source library that runs a language server inside JetBrains IDEs.
-        plugin("com.redhat.devtools.lsp4ij:0.14.0")
+        plugin("com.redhat.devtools.lsp4ij:0.20.1")
         instrumentationTools()   // required by the :instrumentCode task
     }
 }
@@ -29,7 +30,9 @@ kotlin { jvmToolchain(21) }
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "242"
+            // Built against 2025.2 with Kotlin 2.2.0 (required to read 2025.2's jars),
+            // whose output isn't reliably compatible with 2024.x's Kotlin 2.0 runtime.
+            sinceBuild = "252"
             untilBuild = provider { null }
         }
     }
@@ -38,12 +41,3 @@ intellijPlatform {
 // Optional settings-search pre-index; it launches a headless IDE and is flaky. The
 // IDE builds the index on demand, so skip it.
 tasks.buildSearchableOptions { enabled = false }
-
-// The dev sandbox only needs this plugin + LSP4IJ (pulled in via <depends>).
-// Whitelisting them disables the other bundled plugins (Gradle, Maven, Code With
-// Me, …). That silences the harmless SEVERE at startup where IDEA 2024.2's Gradle
-// compatibility matrix can't parse Java 25 — a platform limitation now that Java
-// 25 exists, unrelated to this plugin. Affects `runIde` only, not the built plugin.
-tasks.runIde {
-    systemProperty("idea.required.plugins.id", "dev.rosegold")
-}

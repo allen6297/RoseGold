@@ -14,7 +14,7 @@ like it, powered by the native `rosegoldc --lsp` language server.
   document symbols, signature help, semantic highlighting, folding, and inlay hints.
 
 ## Requirements
-- **IntelliJ IDEA (or any JetBrains IDE) 2024.2+**, Community or Ultimate.
+- **IntelliJ IDEA (or any JetBrains IDE) 2025.2+**, Community or Ultimate.
 - The **LSP4IJ** plugin. It is declared as a dependency, so on install the IDE
   will offer to install it from the Marketplace (or add it via **Settings →
   Plugins → Marketplace → "LSP4IJ"**). No Ultimate edition required.
@@ -29,15 +29,16 @@ like it, powered by the native `rosegoldc --lsp` language server.
 Standard IntelliJ Platform (Gradle) plugin; building downloads the IntelliJ SDK
 and LSP4IJ. Toolchain (pinned & verified building):
 
-- **Gradle 8.13** (wrapper) · **Kotlin 2.0.21** · **IntelliJ Platform Gradle Plugin 2.1.0** · **LSP4IJ 0.14.0**
-- **JDK 21** — targets IDEA **2024.2** (which runs on JBR 21). `gradle.properties`
+- **Gradle 8.13** (wrapper) · **Kotlin 2.2.0** · **IntelliJ Platform Gradle Plugin 2.1.0** · **LSP4IJ 0.20.1**
+- **JDK 21** — builds against IDEA **2025.2** (which runs on JBR 21). `gradle.properties`
   pins `org.gradle.java.home` to a real JDK 21 so the Kotlin compiler never runs
-  on a newer JDK it can't parse.
+  on a newer JDK it can't parse. Kotlin is **2.2.0** to match 2025.2's jars (which
+  carry 2.2.0 metadata — an older Kotlin can't read them).
 
 ```bash
 cd editors/jetbrains
 ./gradlew runIde        # launch a sandbox IDE with the plugin loaded
-./gradlew buildPlugin   # produce build/distributions/rosegold-jetbrains-0.3.0.zip
+./gradlew buildPlugin   # produce build/distributions/rosegold-jetbrains-0.4.0.zip
 ```
 Install the built zip via **Settings → Plugins → ⚙ → Install Plugin from Disk…**
 (install LSP4IJ first, or accept the prompt).
