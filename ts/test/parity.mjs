@@ -3,9 +3,10 @@
 // same exit code. Same ground-truth discipline the self-hosted .rg pipeline is
 // held to: a stage is "correct" exactly when it matches the canonical tool.
 //
-//   --tokens  lexer   (ts/src/lexer.ts)
-//   --ast     parser  (ts/src/parser.ts + astdump.ts)
-//   --check   checker (ts/src/types.ts + modules.ts)   [diagnostics on stderr]
+//   --tokens    lexer    (ts/src/lexer.ts)
+//   --ast       parser   (ts/src/parser.ts + astdump.ts)
+//   --check     checker  (ts/src/types.ts + modules.ts)   [diagnostics on stderr]
+//   --bytecode  compiler (ts/src/compiler.ts + bytecodedump.ts)
 //
 //   node ts/test/parity.mjs        (build cpp/rosegoldc first)
 
@@ -41,6 +42,7 @@ const STAGES = [
   { flag: "--tokens", stage: "lexer" },
   { flag: "--ast", stage: "parser" },
   { flag: "--check", stage: "checker" },
+  { flag: "--bytecode", stage: "compiler" },
 ];
 
 const files = rgFiles(join(ROOT, "examples")).sort().map((f) => relative(ROOT, f));

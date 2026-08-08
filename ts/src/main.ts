@@ -11,6 +11,8 @@ import { Parser } from "./parser.ts";
 import { dumpAst } from "./astdump.ts";
 import { loadModules } from "./modules.ts";
 import { TypeChecker } from "./types.ts";
+import { buildProgram } from "./compiler.ts";
+import { dumpBytecode } from "./bytecodedump.ts";
 
 // Token kinds that carry a value in `--tokens` output; the rest print bare.
 // (STR is intentionally omitted — its decoded value can hold arbitrary bytes,
@@ -75,11 +77,25 @@ function checkCmd(path: string): number {
   return 0;
 }
 
+// `rosegold-ts --bytecode <file>` — compile the entry module + imports (no type
+// check, matching main.cpp) and disassemble the program per function.
+function bytecodeCmd(path: string): number {
+  try {
+    const { mods, order } = loadModules(path);
+    process.stdout.write(dumpBytecode(buildProgram(mods, order)));
+  } catch (e) {
+    process.stderr.write("error: " + (e instanceof Error ? e.message : String(e)) + "\n");
+    return 1;
+  }
+  return 0;
+}
+
 function main(argv: string[]): number {
   if (argv[0] === "--tokens" && argv[1]) return tokensCmd(argv[1]);
   if (argv[0] === "--ast" && argv[1]) return astCmd(argv[1]);
   if (argv[0] === "--check" && argv[1]) return checkCmd(argv[1]);
-  process.stderr.write("usage: rosegold-ts (--tokens | --ast | --check) <file.rg>\n");
+  if (argv[0] === "--bytecode" && argv[1]) return bytecodeCmd(argv[1]);
+  process.stderr.write("usage: rosegold-ts (--tokens | --ast | --check | --bytecode) <file.rg>\n");
   return 2;
 }
 

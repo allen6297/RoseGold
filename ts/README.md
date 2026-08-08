@@ -1,10 +1,12 @@
 # rosegold-ts
 
-A **TypeScript port of RoseGold's front-end**, built stage-by-stage and held to
-the same discipline as the self-hosted `.rg` pipeline: every stage's output must
-be **byte-identical to the canonical C++ implementation's** matching dump flag.
-The C++ compiler (`cpp/rosegoldc`) is the ground truth; this port is "correct"
-exactly when it matches it.
+A **TypeScript port of RoseGold's compiler front-and-back-end**, built
+stage-by-stage and held to the same discipline as the self-hosted `.rg`
+pipeline: every stage's output must be **byte-identical to the canonical C++
+implementation's** matching dump flag. The C++ compiler (`cpp/rosegoldc`) is the
+ground truth; this port is "correct" exactly when it matches it. The full
+pipeline — **lex → parse → type-check → compile to bytecode** — now runs in
+TypeScript, each stage proven identical to the canonical implementation.
 
 Why a second port, in TypeScript? Readability and hackability — a garbage-
 collected language with sum types, closures, and a huge editor/tooling ecosystem
@@ -22,6 +24,8 @@ ts/
     astdump.ts   port of cpp/src/astdump.hpp — --ast S-expression dump
     modules.ts   port of loadModules() (cpp/src/runtime.hpp) — module graph
     types.ts     port of cpp/src/types.hpp — the static type checker
+    compiler.ts  port of cpp/src/compiler.hpp + buildProgram() — bytecode compiler
+    bytecodedump.ts  port of cpp/src/bytecodedump.hpp — --bytecode disassembly
     main.ts      CLI driver (flag dispatch, mirrors cpp/src/main.cpp)
   test/
     parity.mjs   diffs each stage against the matching `rosegoldc` flag
@@ -41,16 +45,18 @@ clang++ -std=c++17 -O2 -o cpp/rosegoldc cpp/src/main.cpp   # build the ground tr
 node ts/src/main.ts --tokens examples/prog.rg              # dump tokens (matches `rosegoldc --tokens`)
 node ts/src/main.ts --ast    examples/prog.rg              # dump AST    (matches `rosegoldc --ast`)
 node ts/src/main.ts --check  examples/errors/typeerrors.rg # type-check  (matches `rosegoldc --check`)
+node ts/src/main.ts --bytecode examples/prog.rg            # disassemble (matches `rosegoldc --bytecode`)
 node ts/test/parity.mjs                                    # verify every stage across every example
 ```
 
-## Status — the whole front end, self-checked
+## Status — the whole compiler, self-checked
 
-| Stage   | Files                       | Verified against     | State |
-|---------|-----------------------------|----------------------|-------|
-| Lexer   | `src/lexer.ts`              | `rosegoldc --tokens` | ✅ byte-identical on every example (43 files) |
-| Parser  | `src/parser.ts` · `ast.ts` · `astdump.ts` | `rosegoldc --ast` | ✅ byte-identical on every example (43 files) |
-| Checker | `src/types.ts` · `modules.ts` | `rosegoldc --check`  | ✅ byte-identical on every example (43 files) |
+| Stage    | Files                       | Verified against       | State |
+|----------|-----------------------------|------------------------|-------|
+| Lexer    | `src/lexer.ts`              | `rosegoldc --tokens`   | ✅ byte-identical on every example (43 files) |
+| Parser   | `src/parser.ts` · `ast.ts` · `astdump.ts` | `rosegoldc --ast` | ✅ byte-identical on every example (43 files) |
+| Checker  | `src/types.ts` · `modules.ts` | `rosegoldc --check`  | ✅ byte-identical on every example (43 files) |
+| Compiler | `src/compiler.ts` · `bytecodedump.ts` | `rosegoldc --bytecode` | ✅ byte-identical on every example (43 files) |
 
 The **lexer** is a faithful port: the offside rule (INDENT/DEDENT/NEWLINE off an
 indentation stack, with `(`/`[` suppressing newlines), string escapes, floats,
@@ -69,6 +75,13 @@ and `error: cannot open module file: …` on a bad import. (The LSP occurrence
 index and the compiler-only AST rewrites are omitted, since neither affects
 `--check` output.)
 
-All three stages reproduce the C++ errors verbatim — `unterminated string`,
-`line N: expected …`, and every `--check` diagnostic — matching stdout, stderr,
-and exit code.
+The **compiler** ports the reservation + compile passes (`buildProgram`) and the
+whole code generator: local-slot allocation, the monotonic constant pool,
+if/while/for/try lowering, `match` dispatch, closures with free-variable capture,
+method/module/variant/builtin/native call forms, and class construction. Like
+`--bytecode` itself, it runs with **no type check**, so it compiles the raw
+(un-desugared) AST — matching the canonical disassembly instruction-for-instruction.
+
+Every stage reproduces the C++ behavior verbatim — `unterminated string`,
+`line N: expected …`, each `--check` diagnostic, and each function's bytecode —
+matching stdout, stderr, and exit code.
