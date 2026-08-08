@@ -2,6 +2,7 @@
 #include <filesystem>
 #include "parser.hpp"
 #include "types.hpp"
+#include "format.hpp"
 
 // =====================================================================
 // RoseGold Language Server  (rosegoldc --lsp)
@@ -417,6 +418,21 @@ struct Lsp {
     }
 
     // --- folding ranges (indentation-based) -----------------------------
+    // --- formatting (canonical offside-rule whitespace) ----------------
+    void onFormatting(const Json& id, const Json& params) {
+        std::string uri; if (auto td = params.get("textDocument")) if (auto u = td->get("uri")) uri = u->s;
+        auto it = docs.find(uri); if (it == docs.end()) { reply(id, "[]"); return; }
+        const std::string& text = it->second.text;
+        std::string formatted = formatSource(text);
+        if (formatted == text) { reply(id, "[]"); return; }        // already canonical: no edits
+        // one TextEdit replacing the whole document (start-of-file .. end-of-file)
+        int lastLine = 0; int lastCol = 0;
+        for (char c : text) { if (c == '\n') { lastLine++; lastCol = 0; } else lastCol++; }
+        std::string range = "{\"start\":{\"line\":0,\"character\":0},\"end\":{\"line\":" +
+                            std::to_string(lastLine) + ",\"character\":" + std::to_string(lastCol) + "}}";
+        reply(id, "[{\"range\":" + range + ",\"newText\":" + jstr(formatted) + "}]");
+    }
+
     void onFoldingRange(const Json& id, const Json& params) {
         std::string uri; if (auto td = params.get("textDocument")) if (auto u = td->get("uri")) uri = u->s;
         auto it = docs.find(uri); if (it == docs.end()) { reply(id, "[]"); return; }
@@ -573,6 +589,7 @@ struct Lsp {
                             "\"definitionProvider\":true,\"referencesProvider\":true,"
                             "\"documentSymbolProvider\":true,\"documentHighlightProvider\":true,"
                             "\"foldingRangeProvider\":true,\"inlayHintProvider\":true,"
+                            "\"documentFormattingProvider\":true,"
                             "\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"type\",\"class\",\"enum\",\"interface\",\"function\",\"method\",\"property\",\"variable\",\"parameter\"],\"tokenModifiers\":[]},\"full\":true},"
                             "\"renameProvider\":{\"prepareProvider\":true},"
                             "\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\"]},"
@@ -614,6 +631,8 @@ struct Lsp {
                 onFoldingRange(*idp, *params);
             } else if (method == "textDocument/inlayHint") {
                 onInlayHint(*idp, *params);
+            } else if (method == "textDocument/formatting") {
+                onFormatting(*idp, *params);
             } else if (idp) {
                 reply(*idp, "null");                         // unknown request: null result
             }

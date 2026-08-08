@@ -1,4 +1,5 @@
 #include "runtime.hpp"
+#include "format.hpp"
 #include "lsp.hpp"
 
 // ---------------------------------------------------------------------
@@ -10,6 +11,13 @@ int main(int argc, char** argv) {
     // `rosegoldc --check <file.rg>` type-check only (front-end gate; no execution)
     // `rosegoldc --lsp`             run the language server (JSON-RPC over stdio)
     if (argc >= 2 && std::string(argv[1]) == "--lsp") return runLsp();
+    if (argc >= 3 && std::string(argv[1]) == "--format") {
+        std::ifstream f(argv[2]);
+        if (!f) { std::cerr << "cannot open " << argv[2] << "\n"; return 2; }
+        std::stringstream ss; ss << f.rdbuf();
+        std::cout << formatSource(ss.str());
+        return 0;
+    }
     bool checkOnly = false; int argi = 1;
     if (argc >= 2 && std::string(argv[1]) == "--check") { checkOnly = true; argi = 2; }
     if (argc < argi + 1) { std::cerr << "usage: rosegoldc [--check] <file.rg>\n"; return 2; }

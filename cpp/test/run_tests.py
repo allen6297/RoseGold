@@ -88,6 +88,37 @@ def test_parity():
             fails.append(f"parity/{name}: C++ and Python output differ")
     print(f"    ({n} examples cross-checked against the Python oracle)")
 
+# ---------------------------------------------------------------- formatter
+def test_formatter():
+    print("• formatter (idempotency + behavior preservation on every example)")
+    for path in sorted(glob.glob(os.path.join(ROOT, "examples", "*.rg"))):
+        name = os.path.splitext(os.path.basename(path))[0]
+        rel = os.path.relpath(path, ROOT)
+        code, once = run([BIN, "--format", rel])
+        if code != 0:
+            fails.append(f"fmt/{name}: --format failed"); continue
+        # Idempotent? Re-format the formatted text (temp is hidden, so the
+        # examples/*.rg globs above never pick it up; same dir keeps imports resolvable).
+        tmp = os.path.join(os.path.dirname(path), ".rgfmt_tmp.rg")
+        trel = os.path.relpath(tmp, ROOT)
+        open(tmp, "w").write(once)
+        try:
+            _, twice = run([BIN, "--format", trel])
+            if twice != once:
+                fails.append(f"fmt/{name}: formatting is not idempotent")
+            # Behavior preserved? Error fixtures must still be rejected; runnable
+            # examples must still produce their golden output.
+            if name in ERROR_FIXTURES:
+                cc, _ = run([BIN, "--check", trel])
+                if cc == 0: fails.append(f"fmt/{name}: formatted error fixture is no longer rejected")
+            else:
+                rc, rout = run([BIN, trel])
+                gp = os.path.join(GOLDEN, f"ex_{name}.out")
+                if rc == 0 and os.path.exists(gp) and norm(rout) != open(gp).read():
+                    fails.append(f"fmt/{name}: program output changed after formatting")
+        finally:
+            os.remove(tmp)
+
 # ---------------------------------------------------------------- LSP drivers
 def test_lsp():
     print("• LSP drivers (golden stdout)")
@@ -137,6 +168,7 @@ def test_builtins():
 build()
 test_examples()
 test_parity()
+test_formatter()
 test_lsp()
 test_embed()
 test_builtins()

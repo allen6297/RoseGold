@@ -10,7 +10,7 @@ SRC       = cpp/src/main.cpp
 HEADERS   = $(wildcard cpp/src/*.hpp)
 EMBED     = engine game hotreload
 
-.PHONY: all build test update-golden run embed clean
+.PHONY: all build test update-golden run fmt embed clean
 
 all: build
 
@@ -31,6 +31,10 @@ update-golden: build
 # Run a single program:  make run FILE=examples/prog.rg
 run: build
 	./$(BIN) $(FILE)
+
+# Print a file in canonical style:  make fmt FILE=examples/prog.rg
+fmt: build
+	./$(BIN) --format $(FILE)
 
 # Build the C++ host-embedding demos.
 embed: build

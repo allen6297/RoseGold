@@ -1,0 +1,14 @@
+[caps] documentFormatting=True
+[format] 1 edit, range 0:0..12:0
+---- newText ----
+module scratch
+
+func main():
+    var x = 1
+    if x < 2:
+        print("small")
+
+    # note
+    print(x)
+---- end ----
+[exit] 0

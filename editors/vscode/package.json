@@ -1,5 +1,6 @@
 {
   "name": "rosegold",
+  "publisher": "rosegold",
   "displayName": "RoseGold",
   "description": "Language support for RoseGold: syntax highlighting, editor config, and a native language server (diagnostics, hover, go-to-definition, completion).",
   "version": "0.2.0",
@@ -25,6 +26,11 @@
         "path": "./syntaxes/rosegold.tmLanguage.json"
       }
     ],
+    "configurationDefaults": {
+      "[rosegold]": {
+        "editor.defaultFormatter": "rosegold.rosegold"
+      }
+    },
     "configuration": {
       "title": "RoseGold",
       "properties": {

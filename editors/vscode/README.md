@@ -17,6 +17,7 @@ Language support for [RoseGold](../../README.md) `.rg` files.
   - **Semantic highlighting** — type-aware token colors (classes vs functions vs methods vs parameters vs variables), layered over the TextMate grammar.
   - **Document highlight** — all occurrences of the symbol under the cursor.
   - **Folding** and **inlay hints** — collapse blocks; inferred types shown after un-annotated `var`s (e.g. `var c = Counter(10)` → `: Counter`).
+  - **Formatting** (⇧⌥F, or format-on-save) — canonical offside-rule whitespace: normalizes indentation to 4 spaces per block level, trims trailing whitespace, and collapses blank-line runs, while leaving comments, strings, and inline spacing untouched. RoseGold is preset as the default formatter for `.rg`, so enabling `editor.formatOnSave` just works.
 
 ## Prerequisites
 1. **Build the compiler** (it *is* the language server):
