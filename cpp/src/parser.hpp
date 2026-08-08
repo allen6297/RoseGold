@@ -70,6 +70,7 @@ struct Parser {
             int mv = parseVis();
             if (isKw("var") || isKw("const")) { i++; Field f; f.vis = mv; Token nt = peek(); f.name = eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col; if (isOp(":")) { i++; f.type = parseType(); } if (isOp("=")) { i++; f.init = expr(); f.hasInit = true; } C.fields.push_back(std::move(f)); }
             else if (isKw("init")) { i++; C.hasCtor = true; auto pl = params(); C.ctorParams = pl.names; C.ctorParamPos = pl.pos; C.ctorPtypes = pl.types; C.ctorBody = suite(); }
+            else if (isKw("signal")) { i++; SignalDecl sg; Token snt = peek(); sg.name = eatIdent(); sg.nameLine = snt.line; sg.nameCol = snt.col; auto pl = params(); sg.params = pl.names; sg.paramPos = pl.pos; sg.ptypes = pl.types; C.signals.push_back(std::move(sg)); }
             else if (isKw("func")) { Func m = func(); m.vis = mv; C.methods.push_back(std::move(m)); }
             else err("expected a class member");
             skipNL();

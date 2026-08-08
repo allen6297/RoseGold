@@ -70,6 +70,7 @@ struct Compiler {
         beginFunc(prog.classes[ci].newFunc, C.ctorParams);
         int self = declare("self"); emit(Op::NEWOBJ, ci); emit(Op::STORE, self);
         for (auto& f : C.fields) { emit(Op::LOAD, self); if (f.hasInit) expr(*f.init); else emit(Op::PUSHNIL); emit(Op::SETPROP, nc(f.name)); }
+        for (auto& sg : C.signals) { emit(Op::LOAD, self); emit(Op::MAKELIST, 0); emit(Op::SETPROP, nc(sg.name)); }   // a signal is a listener list, starting empty
         for (auto& s : C.ctorBody) stmt(s);
         emit(Op::LOAD, self); emit(Op::RET); CF().nlocals = nextSlot;
     }
@@ -191,7 +192,7 @@ struct Compiler {
         static const std::map<std::string, int> BI = { {"print", 0}, {"len", 1}, {"range", 2}, {"push", 3}, {"pop", 4}, {"str", 5}, {"ord", 6}, {"chr", 7}, {"substr", 8}, {"split", 9}, {"int", 10}, {"readFile", 11}, {"writeFile", 12}, {"map", 13}, {"set", 14}, {"get", 15}, {"has", 16}, {"keys", 17}, {"remove", 18},
             {"sqrt", 19}, {"sin", 20}, {"cos", 21}, {"tan", 22}, {"atan2", 23}, {"floor", 24}, {"ceil", 25}, {"round", 26}, {"pow", 27}, {"abs", 28}, {"min", 29}, {"max", 30}, {"lerp", 31}, {"clamp", 32}, {"random", 33}, {"randint", 34}, {"srandom", 35},
             {"coroutine", 36}, {"resume", 37}, {"done", 38},
-            {"vec2", 39}, {"vec3", 40}, {"dot", 41}, {"vlen", 42}, {"norm", 43} };
+            {"vec2", 39}, {"vec3", 40}, {"dot", 41}, {"vlen", 42}, {"norm", 43}, {"__emit", 44} };
         auto bi = BI.find(name); if (bi != BI.end()) { for (auto& a : e.args) expr(*a); emit(Op::BUILTIN, bi->second, argc); return; }
         if (prog.natives) { int ni = prog.natives->find(name); if (ni >= 0) { for (auto& a : e.args) expr(*a); emit(Op::NATIVE, ni, argc); return; } }   // host FFI
         Sym s;

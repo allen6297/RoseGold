@@ -158,6 +158,25 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
                 else if (in.a == 41) { Value bv = st.back(); st.pop_back(); Value av = st.back(); st.pop_back(); Vec& A = std::get<Vec>(av); Vec& B = std::get<Vec>(bv); st.push_back(Value{A.x * B.x + A.y * B.y + A.z * B.z}); }
                 else if (in.a == 42) { Value v = st.back(); st.pop_back(); Vec& V = std::get<Vec>(v); st.push_back(Value{std::sqrt(V.x * V.x + V.y * V.y + V.z * V.z)}); }
                 else if (in.a == 43) { Value v = st.back(); st.pop_back(); Vec r = std::get<Vec>(v); double L = std::sqrt(r.x * r.x + r.y * r.y + r.z * r.z); if (L > 0.0) { r.x /= L; r.y /= L; r.z /= L; } st.push_back(Value{r}); }
+                else if (in.a == 44) {   // __emit(listenerList, args...) — fire a signal, calling each listener
+                    std::vector<Value> vals(argc); for (int k = argc - 1; k >= 0; k--) { vals[k] = st.back(); st.pop_back(); }
+                    if (!vals.empty()) if (auto lp = std::get_if<std::shared_ptr<ListObj>>(&vals[0])) {
+                        std::vector<Value> eargs(vals.begin() + 1, vals.end());
+                        auto listeners = (*lp)->items;   // copy: a handler may connect/disconnect during emit
+                        for (auto& lv : listeners) {
+                            auto cl = std::get_if<std::shared_ptr<Closure>>(&lv); if (!cl) continue;
+                            std::vector<Value> s2; std::vector<Frame> f2; std::vector<Handler> h2;
+                            for (auto& u : (*cl)->upvals) s2.push_back(u);
+                            for (auto& a : eargs) s2.push_back(a);
+                            CFunc* fn2 = &prog.funcs[(*cl)->fn];
+                            int base2 = (int)s2.size() - (int)((*cl)->upvals.size() + eargs.size());
+                            while ((int)s2.size() < base2 + fn2->nlocals) s2.push_back(Value{});   // fewer params than args: extras dropped on RET
+                            f2.push_back({fn2, 0, base2});
+                            runLoop(prog, globals, s2, f2, h2);
+                        }
+                    }
+                    st.push_back(Value{});
+                }
                 break;
             }
             case Op::YIELD: { Value v = st.back(); st.pop_back(); throw YieldSignal{v}; }

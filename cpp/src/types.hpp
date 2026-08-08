@@ -240,6 +240,8 @@ struct TypeChecker {
             ClassInfoT ci; ci.generics = C.generics; ci.bounds = C.bounds; ci.extends = C.extends; ci.uses = C.uses;
             std::set<std::string> g(C.generics.begin(), C.generics.end());
             for (auto& f : C.fields) ci.fields[f.name] = { f.type ? resolveType(f.type, g, m) : tAny(), f.vis };
+            // signals are public members typed Signal<param types> (nkind 3); stored as a listener list at runtime
+            for (auto& sg : C.signals) { std::vector<TyP> ps; for (size_t k = 0; k < sg.params.size(); k++) ps.push_back(sg.ptypes[k] ? resolveType(sg.ptypes[k], g, m) : tAny()); ci.fields[sg.name] = { tNamed("Signal", 3, ps), 0 }; }
             for (auto& mth : C.methods) { std::set<std::string> g2 = g; for (auto& x : mth.generics) g2.insert(x); std::vector<TyP> ps; for (size_t k = 0; k < mth.params.size(); k++) { if (mth.params[k] == "self") continue; ps.push_back(mth.ptypes[k] ? resolveType(mth.ptypes[k], g2, m) : tAny()); } TyP mft = tFunc(ps, mth.retType ? resolveType(mth.retType, g2, m) : tPrim("Void")); mft->bounds = mth.bounds; ci.methods[mth.name] = { mft, mth.vis }; }
             if (C.hasCtor) for (size_t k = 0; k < C.ctorParams.size(); k++) ci.ctorParams.push_back(C.ctorPtypes[k] ? resolveType(C.ctorPtypes[k], g, m) : tAny());
             // Inherit default trait methods (Self := this class) unless the class overrides them.
@@ -324,6 +326,7 @@ struct TypeChecker {
         b["dot"] = tFunc({tPrim("Vec"), tPrim("Vec")}, tPrim("Float")); b["vlen"] = tFunc({tPrim("Vec")}, tPrim("Float")); b["norm"] = tFunc({tPrim("Vec")}, tPrim("Vec"));
         // coroutines: coroutine(fn) -> a coroutine; resume(coro[, arg]) runs to the next yield/return; done(coro) -> Bool
         b["coroutine"] = tFunc({tAny()}, tAny(), true); b["resume"] = tFunc({tAny()}, tAny(), true); b["done"] = tFunc({tAny()}, tPrim("Bool"));
+        b["__emit"] = tFunc({tAny()}, tPrim("Void"), true);   // internal: fires a signal — __emit(listenerList, args...)
         if (natives) for (auto& e : natives->entries) { std::vector<TyP> ps; for (auto& p : e.sig.params) ps.push_back(nativeTy(p)); b[e.name] = tFunc(ps, nativeTy(e.sig.ret), e.sig.variadic); }
         return b;
     }
@@ -403,7 +406,40 @@ struct TypeChecker {
         if (rec) { oc.ty = result; oc.sem = (result && result->k == Ty::FUNC) ? SEM_METHOD : SEM_PROPERTY; occs.push_back(std::move(oc)); }
         return result;
     }
+    // A signal is a NAMED "Signal" (nkind 3) whose args are the declared parameter types.
+    bool isSignal(const TyP& t) { return t && t->k == Ty::NAMED && t->nkind == 3; }
+    // Type-check and desugar `sig.emit(args)` -> __emit(sig, args) and `sig.connect(h)` -> push(sig, h).
+    TyP signalCall(Expr* e, const TyP& sig, Env& env) {
+        const std::string method = e->lhs->sval; auto& ps = sig->args;
+        auto rewrite = [&](const std::string& fn, ExprP handlerOrNull) {
+            ExprP sigExpr = std::move(e->lhs->lhs);
+            std::vector<ExprP> na; na.push_back(std::move(sigExpr));
+            if (handlerOrNull) na.push_back(std::move(handlerOrNull));
+            else for (auto& a : e->args) na.push_back(std::move(a));
+            auto callee = std::make_unique<Expr>(); callee->k = Expr::NAME; callee->sval = fn; callee->line = e->line; callee->col = e->col;
+            e->lhs = std::move(callee); e->args = std::move(na);
+        };
+        if (method == "emit") {
+            if (e->args.size() != ps.size()) err(lineOf(e), "signal expects " + std::to_string(ps.size()) + " argument(s), got " + std::to_string(e->args.size()));
+            else for (size_t k = 0; k < e->args.size(); k++) { TyP at = infer(e->args[k].get(), env); if (!assignable(at, ps[k])) err(lineOf(e->args[k].get()), "signal argument " + std::to_string(k + 1) + ": '" + tStr(at) + "' is not assignable to '" + tStr(ps[k]) + "'"); }
+            rewrite("__emit", nullptr);
+            return tPrim("Void");
+        }
+        // connect(handler): handler's params match a PREFIX of the signal's (fewer allowed — extras are dropped)
+        if (e->args.size() != 1) { err(lineOf(e), "connect expects a single handler"); return tPrim("Void"); }
+        TyP h = infer(e->args[0].get(), env);
+        if (h->k == Ty::FUNC) {
+            if (h->args.size() > ps.size()) err(lineOf(e), "handler takes " + std::to_string(h->args.size()) + " params but the signal emits " + std::to_string(ps.size()));
+            else for (size_t k = 0; k < h->args.size(); k++) if (!assignable(ps[k], h->args[k])) err(lineOf(e->args[0].get()), "handler param " + std::to_string(k + 1) + ": expected '" + tStr(ps[k]) + "', got '" + tStr(h->args[k]) + "'");
+        } else if (h->k != Ty::ANY && h->k != Ty::TVAR) err(lineOf(e->args[0].get()), "connect expects a function, got '" + tStr(h) + "'");
+        rewrite("push", std::move(e->args[0]));
+        return tPrim("Void");
+    }
     TyP inferCall(Expr* e, Env& env) {
+        if (e->lhs->k == Expr::MEMBER && (e->lhs->sval == "emit" || e->lhs->sval == "connect")) {
+            TyP recvT = infer(e->lhs->lhs.get(), env);
+            if (isSignal(recvT)) return signalCall(e, recvT, env);   // otherwise a normal method named emit/connect
+        }
         TyP ct = infer(e->lhs.get(), env); std::vector<TyP> at; for (auto& a : e->args) at.push_back(infer(a.get(), env));
         if (ct->k == Ty::ANY || ct->k == Ty::TVAR) return tAny();
         if (ct->k != Ty::FUNC) { err(lineOf(e), "'" + tStr(ct) + "' is not callable"); return tAny(); }

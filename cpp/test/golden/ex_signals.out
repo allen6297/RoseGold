@@ -1,6 +1,9 @@
-emit 10:
+hurt 10:
   ui:  - 10 hp
   sfx: play hurt sound
-emit 5:
-  ui:  - 5 hp
+  log: (took a hit)
+hurt 20:
+  ui:  - 20 hp
   sfx: play hurt sound
+  log: (took a hit)
+  *** game over ***

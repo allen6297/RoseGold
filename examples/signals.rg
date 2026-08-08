@@ -1,22 +1,35 @@
 module signals
 
-# A signal is a list of listener functions -- connect() subscribes, emit() fires
-# them. Built purely from first-class functions + lists; no engine support needed.
-class Signal:
-    var listeners: List
-    init():
-        self.listeners = []
-    func connect(self, fn):
-        push(self.listeners, fn)
-    func emit(self, arg):
-        for fn in self.listeners:
-            fn(arg)
+# ---------------------------------------------------------------------
+#  Signals are a LANGUAGE feature: `signal name(typed params)` declares an
+#  event on a class. Fire it with `.emit(args)` (checked against the params);
+#  subscribe with `.connect(handler)` (the handler's params are checked too).
+#  A handler may take FEWER params than the signal emits — the extra args are
+#  dropped (Godot-style), so a no-arg listener can watch a rich signal.
+# ---------------------------------------------------------------------
+
+class Player:
+    var hp: Int
+    signal onHit(dmg: Int)
+    signal onDied()
+
+    init(hp: Int):
+        self.hp = hp
+
+    func hurt(self, dmg: Int):
+        self.hp = self.hp - dmg
+        self.onHit.emit(dmg)               # checked: dmg must be Int
+        if self.hp <= 0:
+            self.onDied.emit()
 
 func main():
-    var on_hit = Signal()
-    on_hit.connect(func(dmg) => print("  ui:  -", dmg, "hp"))
-    on_hit.connect(func(dmg) => print("  sfx: play hurt sound"))
-    print("emit 10:")
-    on_hit.emit(10)
-    print("emit 5:")
-    on_hit.emit(5)
+    var p = Player(25)
+    p.onHit.connect(func(d: Int) => print("  ui:  -", d, "hp"))
+    p.onHit.connect(func(d: Int) => print("  sfx: play hurt sound"))
+    p.onHit.connect(func() => print("  log: (took a hit)"))   # overflow: no-arg handler on a 1-arg signal
+    p.onDied.connect(func() => print("  *** game over ***"))
+
+    print("hurt 10:")
+    p.hurt(10)
+    print("hurt 20:")
+    p.hurt(20)

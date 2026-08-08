@@ -112,10 +112,15 @@ ClassDecl   = Modifiers , "class" , Ident , [ GenericParams ] ,
               ":" , NEWLINE , INDENT , Member , { Member } , DEDENT ;
 
 Member      = ( FieldDecl , NEWLINE )
+            | ( SignalDecl , NEWLINE )
             | FuncDecl
             | CtorDecl
             | ClassDecl
             | EnumDecl ;
+
+(* A signal: a typed event. Fire with sig.emit(args); subscribe with
+   sig.connect(handler). Backed by a listener list at runtime. -- SEMANTIC *)
+SignalDecl  = "signal" , Ident , "(" , [ FieldPair , { "," , FieldPair } ] , ")" ;
 
 (* Constructor. Construction uses call syntax:  Canvas("title")
    'self' is implicit inside init. A base constructor can be

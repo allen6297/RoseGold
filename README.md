@@ -77,6 +77,7 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 - Lists with indexing `a[i]` (get and assign)
 - Error handling: `raise <expr>` / `try: ... catch e: ...`
 - Coroutines: `yield <expr>` inside a function; `coroutine(fn, args...)` / `resume(coro[, arg])` / `done(coro)` — pause and continue across frames
+- **Signals**: `signal onHit(dmg: Int)` declares a typed event on a class; fire with `sig.emit(args)` and subscribe with `sig.connect(handler)` — both type-checked. A handler may take fewer params than the signal emits (extras dropped, Godot-style)
 - Game/math stdlib: `sqrt sin cos tan atan2 floor ceil round pow abs min max lerp clamp random randint srandom`
 - Load-time `init:` block per module (runs once, dependencies first); programs start at `main()`
 - Modules: `module a.b`, `import m`, `import m as x`, `import m.(a, b)`, `pub import m`
@@ -203,7 +204,7 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O, a math/game stdlib (`sqrt`/`sin`/`lerp`/`clamp`/`random`/…)
 - ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `examples/coroutine.rg`, `game.rg`
 - ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`)
-- ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a library from first-class functions; `examples/signals.rg`)
+- ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a first-class language feature — see below; `examples/signals.rg`)
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
 - ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a **faithful lexer** (`rglexer.rg`, offside rule + comments + escapes, **token-for-token identical to the C++ lexer**), plus a lexer that reads a file into a token list and a full tokenize→parse→eval pipeline over a recursive enum AST
 - ✅ test harness + CI — `make test` golden-snapshots every example, asserts the error fixtures fail, cross-checks C++/Python parity, snapshots the LSP + embedding demos, and guards the builtin tables against drift; runs on every push via GitHub Actions
