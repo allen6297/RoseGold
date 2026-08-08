@@ -159,10 +159,17 @@ struct Lsp {
         if (!o) { reply(id, "null"); return; }
         std::string sig = o->name + ": " + tStr(o->ty);
         std::string md = "```rosegold\n" + sig + "\n```";
-        // append the symbol's doc comment (if it's defined in this file and documented)
-        if (o->defMod == it->second.entryMod && o->defLine > 0) {
-            auto dit = it->second.docComments.find(o->defLine);
-            if (dit != it->second.docComments.end() && !dit->second.empty()) md += "\n\n---\n" + docBody(dit->second);
+        // append the symbol's doc comment. Same-file docs come from the cached map;
+        // for a symbol defined in another module, read that file's docs so hover works cross-file.
+        if (o->defLine > 0) {
+            const DocState& d = it->second; std::string doc;
+            if (o->defMod == d.entryMod) {
+                auto dit = d.docComments.find(o->defLine); if (dit != d.docComments.end()) doc = dit->second;
+            } else {
+                auto mf = d.modFile.find(o->defMod);
+                if (mf != d.modFile.end()) { auto ds = collectDocs(slurpSafe(mf->second)); auto dit = ds.find(o->defLine); if (dit != ds.end()) doc = dit->second; }
+            }
+            if (!doc.empty()) md += "\n\n---\n" + docBody(doc);
         }
         reply(id, "{\"contents\":{\"kind\":\"markdown\",\"value\":" + jstr(md) + "}}");
     }

@@ -32,4 +32,5 @@ Increment the counter, clamping at `cap`.
 
 - **returns** — the new count
 ----
+[hover xlib.square across files] doc present = True
 [exit] 0
