@@ -1,0 +1,6 @@
+type errors:
+  check_sample:15: expected 2 argument(s), got 1
+  check_sample:16: argument 2: 'String' is not assignable to 'Int'
+  check_sample:17: argument 1: 'Int' is not assignable to 'String'
+  check_sample:18: undefined name 'missing'
+  check_sample:19: undefined name 'unknownVar'

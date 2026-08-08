@@ -16,7 +16,7 @@ UPDATE = "--update" in sys.argv
 os.makedirs(GOLDEN, exist_ok=True)
 
 # Examples expected to FAIL the front end (visibility/resolution/type fixtures).
-ERROR_FIXTURES = {"broken", "client", "consumer", "trait_errors", "typeerrors"}
+ERROR_FIXTURES = {"broken", "client", "consumer", "trait_errors", "typeerrors", "check_sample"}
 
 passed = 0
 fails, skipped = [], []
@@ -162,6 +162,15 @@ def test_selfhost_parser():
     else:
         print("    (the RoseGold-in-RoseGold parser matches the canonical parser, byte-for-byte)")
 
+def test_selfhost_checker():
+    print("• self-hosted type checker parity (rgchecker.rg vs C++ --check)")
+    _, rg = run([BIN, "examples/rgchecker.rg"])           # RoseGold checker checking examples/check_sample.rg
+    _, cc = run([BIN, "--check", "examples/check_sample.rg"])  # the canonical front-end gate on the same file
+    if rg != cc:
+        fails.append("selfhost/rgchecker: type errors differ from --check on check_sample.rg")
+    else:
+        print("    (the RoseGold-in-RoseGold checker matches --check, byte-for-byte)")
+
 # ---------------------------------------------------------------- extern (FFI)
 def test_extern():
     print("• extern declarations (standalone --check, no host)")
@@ -206,6 +215,7 @@ test_lsp()
 test_embed()
 test_selfhost_lexer()
 test_selfhost_parser()
+test_selfhost_checker()
 test_extern()
 test_docgen()
 test_builtins()
