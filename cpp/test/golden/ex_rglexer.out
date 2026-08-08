@@ -1,0 +1,314 @@
+KW module
+IDENT prog
+NEWLINE
+KW import
+IDENT util
+NEWLINE
+KW enum
+IDENT Shape
+OP :
+NEWLINE
+INDENT
+IDENT Circle
+OP (
+IDENT radius
+OP :
+IDENT Float
+OP )
+NEWLINE
+IDENT Rect
+OP (
+IDENT width
+OP :
+IDENT Float
+OP ,
+IDENT height
+OP :
+IDENT Float
+OP )
+NEWLINE
+DEDENT
+KW func
+IDENT area
+OP (
+IDENT s
+OP :
+IDENT Shape
+OP )
+OP ->
+IDENT Float
+OP :
+NEWLINE
+INDENT
+KW return
+KW match
+IDENT s
+OP :
+NEWLINE
+INDENT
+IDENT Circle
+OP (
+IDENT r
+OP )
+OP :
+FLT 3.14159
+OP *
+IDENT r
+OP *
+IDENT r
+NEWLINE
+IDENT Rect
+OP (
+IDENT w
+OP ,
+IDENT h
+OP )
+OP :
+IDENT w
+OP *
+IDENT h
+NEWLINE
+DEDENT
+DEDENT
+KW func
+IDENT fib
+OP (
+IDENT n
+OP :
+IDENT Int
+OP )
+OP ->
+IDENT Int
+OP :
+NEWLINE
+INDENT
+KW if
+IDENT n
+OP <
+INT 2
+OP :
+NEWLINE
+INDENT
+KW return
+IDENT n
+NEWLINE
+DEDENT
+KW return
+IDENT fib
+OP (
+IDENT n
+OP -
+INT 1
+OP )
+OP +
+IDENT fib
+OP (
+IDENT n
+OP -
+INT 2
+OP )
+NEWLINE
+DEDENT
+KW class
+IDENT Counter
+OP :
+NEWLINE
+INDENT
+KW var
+IDENT value
+OP :
+IDENT Int
+NEWLINE
+KW init
+OP (
+IDENT start
+OP :
+IDENT Int
+OP )
+OP :
+NEWLINE
+INDENT
+IDENT self
+OP .
+IDENT value
+OP =
+IDENT start
+NEWLINE
+DEDENT
+KW func
+IDENT bump
+OP (
+IDENT self
+OP )
+OP :
+NEWLINE
+INDENT
+IDENT self
+OP .
+IDENT value
+OP =
+IDENT self
+OP .
+IDENT value
+OP +
+INT 1
+NEWLINE
+DEDENT
+DEDENT
+KW func
+IDENT main
+OP (
+OP )
+OP :
+NEWLINE
+INDENT
+KW var
+IDENT square
+OP =
+KW func
+OP (
+IDENT x
+OP :
+IDENT Int
+OP )
+OP ->
+IDENT Int
+OP =>
+IDENT x
+OP *
+IDENT x
+NEWLINE
+IDENT print
+OP (
+STR
+OP ,
+IDENT square
+OP (
+INT 9
+OP )
+OP )
+NEWLINE
+IDENT print
+OP (
+STR
+OP ,
+IDENT util
+OP .
+IDENT twice
+OP (
+INT 21
+OP )
+OP )
+NEWLINE
+KW var
+IDENT total
+OP =
+INT 0
+NEWLINE
+KW for
+IDENT n
+KW in
+OP [
+INT 1
+OP ,
+INT 2
+OP ,
+INT 3
+OP ,
+INT 4
+OP ,
+INT 5
+OP ]
+OP :
+NEWLINE
+INDENT
+IDENT total
+OP =
+IDENT total
+OP +
+IDENT n
+NEWLINE
+DEDENT
+IDENT print
+OP (
+STR
+OP ,
+IDENT total
+OP )
+NEWLINE
+IDENT print
+OP (
+STR
+OP ,
+IDENT fib
+OP (
+INT 10
+OP )
+OP )
+NEWLINE
+KW var
+IDENT shapes
+OP =
+OP [
+IDENT Circle
+OP (
+FLT 2.0
+OP )
+OP ,
+IDENT Rect
+OP (
+FLT 3.0
+OP ,
+FLT 4.0
+OP )
+OP ]
+NEWLINE
+KW for
+IDENT s
+KW in
+IDENT shapes
+OP :
+NEWLINE
+INDENT
+IDENT print
+OP (
+STR
+OP ,
+IDENT area
+OP (
+IDENT s
+OP )
+OP )
+NEWLINE
+DEDENT
+KW var
+IDENT c
+OP =
+IDENT Counter
+OP (
+INT 10
+OP )
+NEWLINE
+IDENT c
+OP .
+IDENT bump
+OP (
+OP )
+NEWLINE
+IDENT c
+OP .
+IDENT bump
+OP (
+OP )
+NEWLINE
+IDENT print
+OP (
+STR
+OP ,
+IDENT c
+OP .
+IDENT value
+OP )
+NEWLINE
+DEDENT
+END

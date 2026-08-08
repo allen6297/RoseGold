@@ -143,6 +143,16 @@ def test_embed():
         if code != 0: fails.append(f"embed/{src}: run failed")
         else: golden(f"embed_{src}.out", out)
 
+# ---------------------------------------------------------------- self-hosting
+def test_selfhost_lexer():
+    print("• self-hosted lexer parity (rglexer.rg vs C++ --tokens)")
+    _, rg = run([BIN, "examples/rglexer.rg"])          # RoseGold lexer tokenizing examples/prog.rg
+    _, cc = run([BIN, "--tokens", "examples/prog.rg"])  # the canonical C++ lexer on the same file
+    if rg != cc:
+        fails.append("selfhost/rglexer: token stream differs from the C++ lexer on prog.rg")
+    else:
+        print("    (the RoseGold-in-RoseGold lexer matches the canonical lexer, byte-for-byte)")
+
 # ---------------------------------------------------------------- builtin guard
 def test_builtins():
     print("• builtin table consistency (compiler ids / type sigs / VM dispatch)")
@@ -172,6 +182,7 @@ test_parity()
 test_formatter()
 test_lsp()
 test_embed()
+test_selfhost_lexer()
 test_builtins()
 
 print()

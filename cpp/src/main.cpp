@@ -20,6 +20,24 @@ int main(int argc, char** argv) {
         std::cout << formatSource(ss.str());
         return 0;
     }
+    // Dump the token stream (ground truth for the self-hosted lexer in examples/rglexer.rg).
+    // One token per line: "KIND value" for INT/FLT/IDENT/KW/OP; bare "KIND" for STR /
+    // NEWLINE / INDENT / DEDENT / END (STR's decoded value can hold arbitrary bytes).
+    if (argc >= 3 && std::string(argv[1]) == "--tokens") {
+        std::ifstream f(argv[2]);
+        if (!f) { std::cerr << "cannot open " << argv[2] << "\n"; return 2; }
+        std::stringstream ss; ss << f.rdbuf();
+        static const char* NM[] = {"INT","FLT","STR","IDENT","KW","OP","NEWLINE","INDENT","DEDENT","END"};
+        try {
+            for (auto& t : lex(ss.str())) {
+                const char* nm = NM[(int)t.t];
+                if (t.t == Tk::INT || t.t == Tk::FLT || t.t == Tk::IDENT || t.t == Tk::KW || t.t == Tk::OP)
+                    std::cout << nm << " " << t.s << "\n";
+                else std::cout << nm << "\n";
+            }
+        } catch (const std::exception& e) { std::cerr << "error: " << e.what() << "\n"; return 1; }
+        return 0;
+    }
     bool checkOnly = false; int argi = 1;
     if (argc >= 2 && std::string(argv[1]) == "--check") { checkOnly = true; argi = 2; }
     if (argc < argi + 1) { std::cerr << "usage: rosegoldc [--check] <file.rg>\n"; return 2; }
