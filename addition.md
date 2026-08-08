@@ -1,4 +1,4 @@
 # Additions
 - [x] signals as keywords  — done: `signal name(params)` on a class, `.emit`/`.connect`, type-checked, handler overflow allowed
 - [x] documentation, similar to java's  — done: `##***` / `#/*** */#` doc comments, `rosegoldc --doc` (Markdown, @param/@return), LSP hover shows docs
-- [ ] extern c/c++ like rust
+- [x] extern c/c++ like rust  — done: `extern func name(params) -> Ret`, type-checked standalone, bound by name to the host NativeRegistry at runtime (`cpp/embed/externdemo.*`)

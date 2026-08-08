@@ -78,6 +78,7 @@ static void buildProgram(std::map<std::string, Parsed>& mods, std::vector<std::s
         for (auto& C : P.classes) { int ci = (int)prog.classes.size(); prog.classes.push_back({C.name}); for (auto& f : C.fields) prog.classes.back().fieldNames.push_back(f.name); for (auto& sg : C.signals) prog.classes.back().fieldNames.push_back(sg.name); S[C.name] = {1, ci}; }
         for (auto& E : P.enums) for (auto& v : E.variants) { int vi = (int)prog.variants.size(); prog.variants.push_back({E.name, v.first, (int)v.second.size()}); S[v.first] = {2, vi}; }
         for (auto& f : P.funcs) { int fi = (int)prog.funcs.size(); prog.funcs.push_back({m + "::" + f.name}); S[f.name] = {0, fi}; }
+        for (auto& ex : P.externs) if (!S.count(ex.name)) S[ex.name] = {4, 0};   // kind 4 = extern/native (resolved by name at runtime)
         for (size_t ci0 = 0; ci0 < P.classes.size(); ci0++) {
             ClassAst& C = P.classes[ci0]; int ci = S[C.name].index;
             for (auto& mth : C.methods) { int idx = (int)prog.funcs.size(); prog.funcs.push_back({m + "::" + C.name + "." + mth.name}); prog.classes[ci].methods[mth.name] = idx; }

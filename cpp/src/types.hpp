@@ -113,6 +113,7 @@ struct TypeChecker {
         if (!recordOcc) return;
         auto& P = mods[m]; auto& MT = T[m];
         for (auto& f : P.funcs) recordDecl(f.name, f.nameLine, f.nameCol, MT.values.count(f.name) ? MT.values[f.name] : tAny(), SEM_FUNCTION);
+        for (auto& f : P.externs) recordDecl(f.name, f.nameLine, f.nameCol, MT.values.count(f.name) ? MT.values[f.name] : tAny(), SEM_FUNCTION);
         for (auto& g : P.globals) if (g.k == Stmt::VAR) recordDecl(g.name, g.nameLine, g.nameCol, MT.values.count(g.name) ? MT.values[g.name] : tAny(), SEM_VARIABLE);
         for (auto& E : P.enums) recordDecl(E.name, E.nameLine, E.nameCol, tNamed(E.name, 1), SEM_ENUM);
         for (auto& Tr : P.traits) recordDecl(Tr.name, Tr.nameLine, Tr.nameCol, tNamed(Tr.name, 2), SEM_INTERFACE);
@@ -277,6 +278,7 @@ struct TypeChecker {
             MT.enums[E.name] = ei; MT.values[E.name] = enumTy;
         }
         for (auto& f : P.funcs) MT.values[f.name] = funcType(f, m, {});
+        for (auto& f : P.externs) MT.values[f.name] = funcType(f, m, {});   // extern func: callable, bound to a host native by name
         for (auto& g : P.globals) MT.values[g.name] = g.vtype ? resolveType(g.vtype, {}, m) : tAny();
     }
     std::map<std::string, TyP> pubValues(const std::string& m, std::set<std::string> seen) {
@@ -285,6 +287,7 @@ struct TypeChecker {
         for (auto& C : P.classes) if (C.vis == 1) r[C.name] = MT.values[C.name];
         for (auto& E : P.enums) if (E.vis == 1) { r[E.name] = MT.values[E.name]; for (auto& v : E.variants) r[v.first] = MT.values[v.first]; }
         for (auto& f : P.funcs) if (f.vis == 1) r[f.name] = MT.values[f.name];
+        for (auto& f : P.externs) if (f.vis == 1) r[f.name] = MT.values[f.name];
         for (auto& g : P.globals) if (g.vis == 1) r[g.name] = MT.values[g.name];
         for (auto& im : P.imports) if (im.pub && mods.count(im.path)) { auto tex = pubValues(im.path, seen); if (!im.names.empty()) { for (auto& n : im.names) if (tex.count(n)) r[n] = tex[n]; } else for (auto& kv : tex) r[kv.first] = kv.second; }
         return r;

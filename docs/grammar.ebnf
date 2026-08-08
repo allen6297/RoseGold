@@ -77,11 +77,16 @@ Declaration = ClassDecl
             | ExtendDecl
             | EnumDecl
             | FuncDecl
+            | ExternDecl
             | ModuleInit
             | ( FieldDecl , NEWLINE ) ;    (* global var / const *)
 
 (* runs once when the module is loaded, dependencies first *)
 ModuleInit  = "init" , Suite ;
+
+(* a native function the host provides (FFI): a signature, no body.
+   Type-checked against this declaration; bound by name at runtime. -- SEMANTIC *)
+ExternDecl  = "extern" , FuncSig , NEWLINE ;
 
 
 (* ---------- Modifiers ---------- *)

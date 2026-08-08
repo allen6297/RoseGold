@@ -194,7 +194,9 @@ struct Compiler {
             {"coroutine", 36}, {"resume", 37}, {"done", 38},
             {"vec2", 39}, {"vec3", 40}, {"dot", 41}, {"vlen", 42}, {"norm", 43}, {"__emit", 44} };
         auto bi = BI.find(name); if (bi != BI.end()) { for (auto& a : e.args) expr(*a); emit(Op::BUILTIN, bi->second, argc); return; }
-        if (prog.natives) { int ni = prog.natives->find(name); if (ni >= 0) { for (auto& a : e.args) expr(*a); emit(Op::NATIVE, ni, argc); return; } }   // host FFI
+        // native call: an `extern func` (module sym kind 4) or a host-registered native. Resolved by name at runtime.
+        { Sym ns; bool isExtern = resolveUn(name, ns) && ns.kind == 4;
+          if (isExtern || (prog.natives && prog.natives->find(name) >= 0)) { for (auto& a : e.args) expr(*a); emit(Op::NATIVE, nc(name), argc); return; } }
         Sym s;
         if (resolveUn(name, s)) {
             if (s.kind == 3) { emit(Op::LOADG, s.index); for (auto& a : e.args) expr(*a); emit(Op::CALLV, argc); return; }

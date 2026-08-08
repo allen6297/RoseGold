@@ -206,6 +206,7 @@ struct Parser {
             else if (isKw("class")) { ClassAst c = classDecl(); c.vis = tv; p.classes.push_back(std::move(c)); }
             else if (isKw("trait")) { TraitAst t = traitDecl(); t.vis = tv; p.traits.push_back(std::move(t)); }
             else if (isKw("extend")) { p.extensions.push_back(extendDecl()); }
+            else if (isKw("extern")) { i++; Func f = funcSig(); f.vis = tv; p.externs.push_back(std::move(f)); }   // extern func name(params) -> Ret : bound to a host native by name
             else if (isKw("enum")) { EnumAst e = enumDecl(); e.vis = tv; p.enums.push_back(std::move(e)); }
             else if (isKw("var") || isKw("const")) { Stmt g = varStmt(); g.vis = tv; p.globals.push_back(std::move(g)); }
             else if (isKw("init")) { i++; auto body = suite(); for (auto& s : body) p.initBody.push_back(std::move(s)); p.hasInit = true; }   // load-time module init block

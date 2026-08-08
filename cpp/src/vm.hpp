@@ -180,7 +180,13 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
                 break;
             }
             case Op::YIELD: { Value v = st.back(); st.pop_back(); throw YieldSignal{v}; }
-            case Op::NATIVE: { int argc = in.b; std::vector<Value> args(argc); for (int k = argc - 1; k >= 0; k--) { args[k] = st.back(); st.pop_back(); } st.push_back(prog.natives->entries[in.a].fn(args)); break; }
+            case Op::NATIVE: {   // in.a = const-pool index of the native's NAME; resolved by name (works for extern-declared funcs too)
+                int argc = in.b; std::vector<Value> args(argc); for (int k = argc - 1; k >= 0; k--) { args[k] = st.back(); st.pop_back(); }
+                const std::string& nm = std::get<std::string>(prog.consts[in.a]);
+                int idx = prog.natives ? prog.natives->find(nm) : -1;
+                if (idx < 0) throw VMError("native function '" + nm + "' is not registered");
+                st.push_back(prog.natives->entries[idx].fn(args)); break;
+            }
             case Op::CALL: call(in.a, in.b); break;
             case Op::RET: { Value ret = st.back(); st.pop_back(); int base = frames.back().base; frames.pop_back(); st.resize(base); st.push_back(ret); break; }
         }

@@ -81,6 +81,7 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 - Game/math stdlib: `sqrt sin cos tan atan2 floor ceil round pow abs min max lerp clamp random randint srandom`
 - Load-time `init:` block per module (runs once, dependencies first); programs start at `main()`
 - Modules: `module a.b`, `import m`, `import m as x`, `import m.(a, b)`, `pub import m`
+- **Native FFI**: `extern func host_add(a: Int, b: Int) -> Int` declares a function the C++ host provides; calls are type-checked against the declaration and bound by name to the host's registry at runtime (Rust-`extern` style)
 - File extension: `.rg`
 
 ## Tools
@@ -204,7 +205,7 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ debugger — a native **Debug Adapter** (`rosegoldc --dap`, DAP over stdio): line breakpoints, step in/over/out, call stack, and local/global variable inspection with **drill-in** (expand objects into fields, lists/maps into elements, enum variants into payloads) + expression evaluation, driven by a debug hook in the VM (per-instruction line table + per-function local-name table). VS Code launches it via a `rosegold` debug type (F5 on a `.rg` file)
 - ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O, a math/game stdlib (`sqrt`/`sin`/`lerp`/`clamp`/`random`/…)
 - ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `examples/coroutine.rg`, `game.rg`
-- ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`)
+- ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`). Scripts declare the host's functions with **`extern func`** — type-checked standalone, bound by name at runtime (`cpp/embed/externdemo.cpp` + `externdemo.rg`)
 - ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a first-class language feature — see below; `examples/signals.rg`)
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
 - ✅ self-hosting fragments — RoseGold front-end pieces written in RoseGold: a **faithful lexer** (`rglexer.rg`, offside rule + comments + escapes, **token-for-token identical to the C++ lexer**), plus a lexer that reads a file into a token list and a full tokenize→parse→eval pipeline over a recursive enum AST

@@ -134,7 +134,7 @@ def test_lsp():
 # ---------------------------------------------------------------- embedding
 def test_embed():
     print("• embedding demos (build + golden stdout)")
-    for src in ["engine", "game", "hotreload"]:
+    for src in ["engine", "game", "hotreload", "externdemo"]:
         exe = os.path.join(ROOT, "cpp", "embed", src)
         bc, bout = run([CXX, "-std=c++17", "-O2", "-o", exe, f"cpp/embed/{src}.cpp"])
         if bc != 0:
@@ -152,6 +152,12 @@ def test_selfhost_lexer():
         fails.append("selfhost/rglexer: token stream differs from the C++ lexer on prog.rg")
     else:
         print("    (the RoseGold-in-RoseGold lexer matches the canonical lexer, byte-for-byte)")
+
+# ---------------------------------------------------------------- extern (FFI)
+def test_extern():
+    print("• extern declarations (standalone --check, no host)")
+    code, out = run([BIN, "--check", "cpp/embed/externdemo.rg"])   # type-checks against the extern signatures alone
+    if code != 0: fails.append("extern: --check of an extern-declaring script failed (should need no host)\n      " + (out.splitlines()[-1] if out else ""))
 
 # ---------------------------------------------------------------- doc generator
 def test_docgen():
@@ -190,6 +196,7 @@ test_formatter()
 test_lsp()
 test_embed()
 test_selfhost_lexer()
+test_extern()
 test_docgen()
 test_builtins()
 
