@@ -1,6 +1,7 @@
 package dev.rosegold
 
 import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.execution.configurations.RunConfigurationOptions
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
@@ -16,6 +17,11 @@ import com.redhat.devtools.lsp4ij.dap.descriptors.DefaultDebugAdapterDescriptor
 // Registers the native debug adapter (`rosegoldc --dap`) with LSP4IJ so JetBrains
 // can debug .rg files — breakpoints, stepping, call stack, and variable inspection
 // with drill-in — driven by the same DAP server the VS Code extension uses.
+//
+// One-click: LSP4IJ's built-in run-configuration producer offers a "Debug" action
+// for any file this factory calls debuggable, and prepareConfiguration() (below)
+// fills in the server, the file, and a "Debug <name>" title — so right-clicking a
+// .rg file (or using the gutter) creates a ready-to-run RoseGold debug config.
 class RoseGoldDapFactory : DebugAdapterDescriptorFactory() {
     override fun isDebuggableFile(file: VirtualFile, project: Project): Boolean =
         file.extension == "rg"
@@ -24,6 +30,14 @@ class RoseGoldDapFactory : DebugAdapterDescriptorFactory() {
         options: RunConfigurationOptions,
         environment: ExecutionEnvironment,
     ): DebugAdapterDescriptor = RoseGoldDapDescriptor(options, environment)
+
+    // The base sets the server id, file, and launch mode from this factory's server
+    // definition; we add a readable configuration name.
+    override fun prepareConfiguration(configuration: RunConfiguration, file: VirtualFile, project: Project): Boolean {
+        val ok = super.prepareConfiguration(configuration, file, project)
+        configuration.name = "Debug ${file.name}"
+        return ok
+    }
 }
 
 class RoseGoldDapDescriptor(
