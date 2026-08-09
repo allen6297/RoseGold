@@ -6,17 +6,21 @@ import com.redhat.devtools.lsp4ij.features.semanticTokens.SemanticTokensColorsPr
 import dev.rosegold.RoseGoldSyntaxHighlighter.Companion as C
 
 // Aligns the language server's semantic tokens with the lexer's coloring so names
-// don't revert to a default color when the server responds. Type-like tokens map to
-// the lexer's TYPE key. `function`/`method` are intentionally left to the lexer,
-// which distinguishes declarations (`fn name`) from calls (`name(`) — a distinction
-// the server can't express (its legend advertises no token modifiers).
+// keep a consistent color when the server responds. The server tags declaration
+// sites with the "declaration" modifier, so function/method names split into
+// declaration vs call/use colors — and even a function passed as a value (which the
+// lexer can't spot) is colored here. Type-like tokens map to the lexer's TYPE key.
 class RoseGoldSemanticTokensColorsProvider : SemanticTokensColorsProvider {
     override fun getTextAttributesKey(
         tokenType: String,
         tokenModifiers: List<String>,
         file: PsiFile,
-    ): TextAttributesKey? = when (tokenType) {
-        "type", "class", "enum", "interface" -> C.TYPE
-        else -> null   // function/method (lexer owns decl-vs-call), variable, parameter, …
+    ): TextAttributesKey? {
+        val isDecl = tokenModifiers.contains("declaration")
+        return when (tokenType) {
+            "function", "method" -> if (isDecl) C.FUNCTION_DECL else C.FUNCTION_CALL
+            "type", "class", "enum", "interface" -> C.TYPE
+            else -> null   // variable / parameter / property: keep the default color
+        }
     }
 }

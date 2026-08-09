@@ -362,7 +362,7 @@ struct Lsp {
             seenL = line; seenC = col;
             int dl = line - pl, dc = (dl == 0) ? col - pc : col;
             if (!data.empty()) data += ",";
-            data += std::to_string(dl) + "," + std::to_string(dc) + "," + std::to_string(o->len) + "," + std::to_string(o->sem) + ",0";
+            data += std::to_string(dl) + "," + std::to_string(dc) + "," + std::to_string(o->len) + "," + std::to_string(o->sem) + "," + (o->decl ? "1" : "0");   // modifier bit 0 = declaration
             pl = line; pc = col;
         }
         reply(id, "{\"data\":[" + data + "]}");
@@ -666,7 +666,7 @@ struct Lsp {
                             "\"foldingRangeProvider\":true,\"inlayHintProvider\":true,"
                             "\"documentFormattingProvider\":true,"
                             "\"codeActionProvider\":{\"codeActionKinds\":[\"quickfix\",\"refactor.rewrite\"]},"
-                            "\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"type\",\"class\",\"enum\",\"interface\",\"function\",\"method\",\"property\",\"variable\",\"parameter\"],\"tokenModifiers\":[]},\"full\":true},"
+                            "\"semanticTokensProvider\":{\"legend\":{\"tokenTypes\":[\"type\",\"class\",\"enum\",\"interface\",\"function\",\"method\",\"property\",\"variable\",\"parameter\"],\"tokenModifiers\":[\"declaration\"]},\"full\":true},"
                             "\"renameProvider\":{\"prepareProvider\":true},"
                             "\"signatureHelpProvider\":{\"triggerCharacters\":[\"(\",\",\"]},"
                             "\"completionProvider\":{\"triggerCharacters\":[\".\"]}},"

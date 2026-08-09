@@ -8,6 +8,7 @@ BIN  = os.path.join(ROOT, "cpp", "rosegoldc")
 DOC  = os.path.join(ROOT, "examples", "features", "lsp_demo.rg")
 URI  = "file://" + DOC
 LEGEND = ["type", "class", "enum", "interface", "function", "method", "property", "variable", "parameter"]
+MODIFIERS = ["declaration"]
 LINES = open(DOC).read().split("\n")
 
 def frame(m): b = json.dumps(m).encode(); return b"Content-Length: %d\r\n\r\n%s" % (len(b), b)
@@ -47,7 +48,8 @@ for i in range(0, len(data), 5):
     line += dl
     ch = dc if dl else ch + dc
     text = LINES[line][ch:ch+ln]
-    print("   %2d:%-2d %-9s %s" % (line, ch, LEGEND[ty], text))
+    tag = " [" + ",".join(MODIFIERS[b] for b in range(len(MODIFIERS)) if mod & (1 << b)) + "]" if mod else ""
+    print("   %2d:%-2d %-9s %s%s" % (line, ch, LEGEND[ty], text, tag))
 
 # document highlight on the field `value` (decl line 3) -> decl + all member uses
 send({"jsonrpc":"2.0","id":3,"method":"textDocument/documentHighlight","params":{"textDocument":{"uri":URI},"position":{"line":3,"character":9}}})

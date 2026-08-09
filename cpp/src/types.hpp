@@ -42,6 +42,7 @@ struct Occ {
     int recv = 0;                        // 1 if a MEMBER access (its ty is the member's type)
     std::string recvClass, recvMod;     // for MEMBER/completion: receiver's class name or module name
     int sem = -1;                        // semantic-token type index (see SEM_* / legend), -1 = don't emit
+    int decl = 0;                        // 1 if this occurrence is the declaration site (-> "declaration" token modifier)
 };
 // Semantic token type indices (must match the legend advertised to the client).
 enum { SEM_TYPE = 0, SEM_CLASS = 1, SEM_ENUM = 2, SEM_INTERFACE = 3, SEM_FUNCTION = 4, SEM_METHOD = 5, SEM_PROPERTY = 6, SEM_VARIABLE = 7, SEM_PARAMETER = 8 };
@@ -105,7 +106,7 @@ struct TypeChecker {
     void recordDecl(const std::string& name, int line, int col, const TyP& ty, int sem = -1) {
         if (!recordOcc || line <= 0) return;
         Occ o; o.occMod = curm; o.line = line; o.col = col; o.len = (int)name.size(); o.name = name; o.ty = ty; o.sem = sem;
-        o.defMod = curm; o.defLine = line; o.defCol = col;
+        o.defMod = curm; o.defLine = line; o.defCol = col; o.decl = 1;   // a declaration site
         occs.push_back(std::move(o));
     }
     // Structural declarations of a module: funcs, globals, enums/traits/classes and class members.
