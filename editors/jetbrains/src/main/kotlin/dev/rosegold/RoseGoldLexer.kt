@@ -14,25 +14,56 @@ class RoseGoldLexer : LexerBase() {
     private var tok: IElementType? = null
 
     private val keywords = setOf(
-        "module", "import", "as", "pub", "internal", "private", "static",
-        "func", "var", "const", "return", "pass", "if", "elif", "else",
-        "while", "for", "in", "break", "continue", "try", "catch", "raise",
-        "class", "enum", "init", "match", "extends", "uses", "true", "false"
+        // TOP LEVEL
+        "module", "import",
+
+        //DECLARATION DECORATORS
+
+        // DECLARATION LEVEL
+        "var", "const", "signal", "enum",
+
+        //METHOD DECORATORS
+
+        // METHOD PREFIX
+        "pub", "internal", "private", "static",
+
+        // METHOD LEVEL
+        "fn", "class", "struct", "trait", "extern",
+
+        // METHOD BODY
+        "init",
+
+        // METHOD LOGIC
+        "while", "for", "in", "match",
+        "if", "elif", "else",
+        "break", "continue", "try", "catch", "raise", "yield",
+        "return", "pass",
+
+        // METHOD SUFFIX
+        "uses", "extend", "extends",
+
+        // HELPERS
+        "as", "true", "false"
     )
 
     override fun start(buffer: CharSequence, startOffset: Int, endOffset: Int, initialState: Int) {
         buf = buffer; bufEnd = endOffset; tokStart = startOffset; scan()
     }
+
     override fun getState() = 0
     override fun getTokenType(): IElementType? = tok
     override fun getTokenStart() = tokStart
     override fun getTokenEnd() = tokEnd
     override fun getBufferSequence() = buf
     override fun getBufferEnd() = bufEnd
-    override fun advance() { tokStart = tokEnd; scan() }
+    override fun advance() {
+        tokStart = tokEnd; scan()
+    }
 
     private fun scan() {
-        if (tokStart >= bufEnd) { tok = null; tokEnd = tokStart; return }
+        if (tokStart >= bufEnd) {
+            tok = null; tokEnd = tokStart; return
+        }
         val c = buf[tokStart]
         var i = tokStart
         when {
@@ -40,20 +71,31 @@ class RoseGoldLexer : LexerBase() {
                 while (i < bufEnd && (buf[i] == ' ' || buf[i] == '\t' || buf[i] == '\r' || buf[i] == '\n')) i++
                 tok = TokenType.WHITE_SPACE
             }
+
             c == '#' && i + 1 < bufEnd && buf[i + 1] == '/' -> {
                 i += 2
                 while (i + 1 < bufEnd && !(buf[i] == '/' && buf[i + 1] == '#')) i++
                 i = if (i + 1 < bufEnd) i + 2 else bufEnd
                 tok = RoseGoldTokens.COMMENT
             }
-            c == '#' -> { while (i < bufEnd && buf[i] != '\n') i++; tok = RoseGoldTokens.COMMENT }
+
+            c == '#' -> {
+                while (i < bufEnd && buf[i] != '\n') i++; tok = RoseGoldTokens.COMMENT
+            }
+
             c == '"' -> {
                 i++
-                while (i < bufEnd && buf[i] != '"') { if (buf[i] == '\\' && i + 1 < bufEnd) i += 2 else i++ }
+                while (i < bufEnd && buf[i] != '"') {
+                    if (buf[i] == '\\' && i + 1 < bufEnd) i += 2 else i++
+                }
                 if (i < bufEnd) i++
                 tok = RoseGoldTokens.STRING
             }
-            c.isDigit() -> { while (i < bufEnd && (buf[i].isDigit() || buf[i] == '.')) i++; tok = RoseGoldTokens.NUMBER }
+
+            c.isDigit() -> {
+                while (i < bufEnd && (buf[i].isDigit() || buf[i] == '.')) i++; tok = RoseGoldTokens.NUMBER
+            }
+
             c.isLetter() || c == '_' -> {
                 while (i < bufEnd && (buf[i].isLetterOrDigit() || buf[i] == '_')) i++
                 val w = buf.subSequence(tokStart, i).toString()
@@ -63,7 +105,15 @@ class RoseGoldLexer : LexerBase() {
                     else -> RoseGoldTokens.IDENT
                 }
             }
-            else -> { i++; tok = RoseGoldTokens.OP }
+
+            c == '(' -> { i++; tok = RoseGoldTokens.LPAREN }
+            c == ')' -> { i++; tok = RoseGoldTokens.RPAREN }
+            c == '[' -> { i++; tok = RoseGoldTokens.LBRACKET }
+            c == ']' -> { i++; tok = RoseGoldTokens.RBRACKET }
+
+            else -> {
+                i++; tok = RoseGoldTokens.OPERATOR
+            }
         }
         tokEnd = i
     }

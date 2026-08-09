@@ -4,10 +4,12 @@
   <vendor>RoseGold</vendor>
   <description><![CDATA[
     Language support for the RoseGold programming language (<code>.rg</code>):
-    syntax highlighting plus full language features (diagnostics, hover,
-    go-to-definition, completion, references, rename, document symbols,
-    signature help, semantic highlighting, folding, inlay hints) via the native
-    <code>rosegoldc --lsp</code> language server, connected through LSP4IJ.
+    syntax highlighting, comment toggling, brace matching, and a color settings
+    page, plus full language features (diagnostics, hover, go-to-definition,
+    completion, references, rename, document symbols, signature help, semantic
+    highlighting, folding, inlay hints) via the native <code>rosegoldc --lsp</code>
+    language server, and debugging (breakpoints, stepping, variables) via
+    <code>rosegoldc --dap</code> — both connected through LSP4IJ.
   ]]></description>
 
   <depends>com.intellij.modules.platform</depends>
@@ -26,6 +28,14 @@
     <lang.parserDefinition
         language="RoseGold"
         implementationClass="dev.rosegold.RoseGoldParserDefinition"/>
+    <lang.commenter
+        language="RoseGold"
+        implementationClass="dev.rosegold.RoseGoldCommenter"/>
+    <lang.braceMatcher
+        language="RoseGold"
+        implementationClass="dev.rosegold.RoseGoldBraceMatcher"/>
+    <colorSettingsPage
+        implementation="dev.rosegold.RoseGoldColorSettingsPage"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
@@ -36,5 +46,9 @@
     <languageMapping
         language="RoseGold"
         serverId="rosegold"/>
+    <debugAdapterServer
+        id="rosegold-dap"
+        name="RoseGold Debugger"
+        factoryClass="dev.rosegold.RoseGoldDapFactory"/>
   </extensions>
 </idea-plugin>

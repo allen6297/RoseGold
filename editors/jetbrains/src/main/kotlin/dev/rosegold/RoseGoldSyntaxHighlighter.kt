@@ -19,19 +19,24 @@ class RoseGoldSyntaxHighlighter : SyntaxHighlighterBase() {
         RoseGoldTokens.NUMBER -> pack(NUMBER)
         RoseGoldTokens.STRING -> pack(STRING)
         RoseGoldTokens.COMMENT -> pack(COMMENT)
-        RoseGoldTokens.OP -> pack(OP)
+        RoseGoldTokens.OPERATOR -> pack(OP)
+        RoseGoldTokens.LPAREN, RoseGoldTokens.RPAREN -> pack(PARENS)
+        RoseGoldTokens.LBRACKET, RoseGoldTokens.RBRACKET -> pack(BRACKETS)
         else -> emptyArray()
     }
 
     companion object {
         private fun key(name: String, base: TextAttributesKey) =
             TextAttributesKey.createTextAttributesKey(name, base)
+
         val KEYWORD = key("ROSEGOLD_KEYWORD", D.KEYWORD)
         val TYPE = key("ROSEGOLD_TYPE", D.CLASS_NAME)
         val NUMBER = key("ROSEGOLD_NUMBER", D.NUMBER)
         val STRING = key("ROSEGOLD_STRING", D.STRING)
         val COMMENT = key("ROSEGOLD_COMMENT", D.LINE_COMMENT)
-        val OP = key("ROSEGOLD_OP", D.OPERATION_SIGN)
+        val OP = key("ROSEGOLD_OPERATOR", D.OPERATION_SIGN)
+        val PARENS = key("ROSEGOLD_PARENS", D.PARENTHESES)
+        val BRACKETS = key("ROSEGOLD_BRACKETS", D.BRACKETS)
     }
 }
 
