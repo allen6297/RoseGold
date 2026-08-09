@@ -3,12 +3,17 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "TypeScript port of RoseGold's front-end, verified stage-by-stage against the canonical C++ dump flags (--tokens, --ast, --check).",
+  "description": "TypeScript port of RoseGold's compiler, verified stage-by-stage against the canonical C++ dump flags (--tokens, --ast, --check, --bytecode).",
   "scripts": {
     "tokens": "node src/main.ts --tokens",
+    "typecheck": "tsc --noEmit",
     "test": "node test/parity.mjs"
   },
   "engines": {
     "node": ">=23.6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
   }
 }

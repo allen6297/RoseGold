@@ -1,0 +1,22 @@
+{
+  // Configured for Node's built-in TypeScript type-stripping (Node >= 23.6):
+  // the code is never emitted (Node strips types at runtime), relative imports
+  // keep their `.ts` extension, and only erasable TS syntax is allowed — so the
+  // editor / `tsc --noEmit` check exactly what Node will run.
+  "compilerOptions": {
+    "lib": ["ESNext"],
+    "target": "ESNext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/**/*.ts"]
+}
