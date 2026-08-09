@@ -1,12 +1,16 @@
 module entities
 
-# A component the host instantiates per entity and ticks each frame. `node` is
-# an OPAQUE engine handle (created in C++, stored here, and passed back to the
-# engine's node_move native) -- the script never inspects it, just moves it.
+# A component the host instantiates per entity and ticks each frame. `Node` is
+# an OPAQUE foreign type: the host creates the handle in C++, the script stores
+# and passes it back to node_move, but can never inspect or construct it.
+extern:
+    type Node
+    fn node_move(n: Node, dx: Float, dy: Float) -> Void
+
 class Mover:
-    var node
+    var node: Node
     var speed: Float
-    init(node, speed: Float):
+    init(node: Node, speed: Float):
         self.node = node
         self.speed = speed
     fn update(self, dt: Float):

@@ -47,6 +47,25 @@ struct Parser {
     Func func() { eatKw("fn"); Func f; Token nt = peek(); f.name = eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col; f.generics = genericNames(f.bounds); auto pl = params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types; if (isOp("->")) { i++; f.retType = parseType(); } f.body = suite(); return f; }
     // trait method: an abstract signature (ends at NEWLINE), or a default implementation (has a `:` body).
     Func funcSig() { eatKw("fn"); Func f; f.isSig = true; Token nt = peek(); f.name = eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col; f.generics = genericNames(f.bounds); auto pl = params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types; if (isOp("->")) { i++; f.retType = parseType(); } if (isOp(":")) f.body = suite(); return f; }
+    // `extern fn f(...)` (one-liner) or `extern:` block of `fn`/`type` members, each bound to a host native by name.
+    // `type Name` declares an opaque foreign type (its only value is a host handle).
+    void externBlock(int vis, Parsed& p) {
+        eatKw("extern");
+        if (isOp(":")) {                                  // extern: <block of fn / type members>
+            beginBlock();
+            while (!is(Tk::DEDENT) && !is(Tk::END)) {
+                if (isKw("fn")) { Func f = funcSig(); f.vis = vis; p.externs.push_back(std::move(f)); }
+                else if (is(Tk::IDENT) && peek().s == "type") { i++; p.externTypes.push_back(eatIdent()); }
+                else err("expected 'fn' or 'type' in extern block");
+                skipNL();
+            }
+            if (is(Tk::DEDENT)) i++;
+        } else if (is(Tk::IDENT) && peek().s == "type") {  // extern type Name  (one-liner)
+            i++; p.externTypes.push_back(eatIdent());
+        } else {                                           // extern fn name(...) -> Ret  (one-liner)
+            Func f = funcSig(); f.vis = vis; p.externs.push_back(std::move(f));
+        }
+    }
     TraitAst traitDecl() {
         eatKw("trait"); TraitAst Tr; Token nt = peek(); Tr.name = eatIdent(); Tr.nameLine = nt.line; Tr.nameCol = nt.col; Tr.generics = genericNames(Tr.bounds);
         if (isKw("uses")) { i++; Tr.uses.push_back(parseType()->name); while (isOp(",")) { i++; Tr.uses.push_back(parseType()->name); } }
@@ -206,7 +225,7 @@ struct Parser {
             else if (isKw("class")) { ClassAst c = classDecl(); c.vis = tv; p.classes.push_back(std::move(c)); }
             else if (isKw("trait")) { TraitAst t = traitDecl(); t.vis = tv; p.traits.push_back(std::move(t)); }
             else if (isKw("extend")) { p.extensions.push_back(extendDecl()); }
-            else if (isKw("extern")) { i++; Func f = funcSig(); f.vis = tv; p.externs.push_back(std::move(f)); }   // extern func name(params) -> Ret : bound to a host native by name
+            else if (isKw("extern")) externBlock(tv, p);   // extern fn / extern: block / extern type : bound to a host native by name
             else if (isKw("enum")) { EnumAst e = enumDecl(); e.vis = tv; p.enums.push_back(std::move(e)); }
             else if (isKw("var") || isKw("const")) { Stmt g = varStmt(); g.vis = tv; p.globals.push_back(std::move(g)); }
             else if (isKw("init")) { i++; auto body = suite(); for (auto& s : body) p.initBody.push_back(std::move(s)); p.hasInit = true; }   // load-time module init block

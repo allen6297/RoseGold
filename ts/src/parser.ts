@@ -127,6 +127,25 @@ export class Parser {
     if (this.isOp(":")) f.body = this.suite();
     return f;
   }
+  // `extern fn f(...)` (one-liner) or `extern:` block of `fn`/`type` members, each bound to a
+  // host native by name. `type Name` declares an opaque foreign type (its only value is a host handle).
+  externBlock(vis: number, p: Parsed): void {
+    this.eatKw("extern");
+    if (this.isOp(":")) {                                       // extern: <block>
+      this.beginBlock();
+      while (!this.is("DEDENT") && !this.is("END")) {
+        if (this.isKw("fn")) { const f = this.funcSig(); f.vis = vis; p.externs.push(f); }
+        else if (this.is("IDENT") && this.peek().value === "type") { this.i++; p.externTypes.push(this.eatIdent()); }
+        else this.err("expected 'fn' or 'type' in extern block");
+        this.skipNL();
+      }
+      if (this.is("DEDENT")) this.i++;
+    } else if (this.is("IDENT") && this.peek().value === "type") {  // extern type Name (one-liner)
+      this.i++; p.externTypes.push(this.eatIdent());
+    } else {                                                    // extern fn name(...) -> Ret (one-liner)
+      const f = this.funcSig(); f.vis = vis; p.externs.push(f);
+    }
+  }
 
   traitDecl(): TraitAst {
     this.eatKw("trait"); const Tr = mkTrait(); const nt = this.peek();
@@ -372,7 +391,7 @@ export class Parser {
       else if (this.isKw("class")) { const c = this.classDecl(); c.vis = tv; p.classes.push(c); }
       else if (this.isKw("trait")) { const t = this.traitDecl(); t.vis = tv; p.traits.push(t); }
       else if (this.isKw("extend")) { p.extensions.push(this.extendDecl()); }
-      else if (this.isKw("extern")) { this.i++; const f = this.funcSig(); f.vis = tv; p.externs.push(f); }
+      else if (this.isKw("extern")) this.externBlock(tv, p);
       else if (this.isKw("enum")) { const e = this.enumDecl(); e.vis = tv; p.enums.push(e); }
       else if (this.isKw("var") || this.isKw("const")) { const g = this.varStmt(); g.vis = tv; p.globals.push(g); }
       else if (this.isKw("init")) { this.i++; const body = this.suite(); for (const s of body) p.initBody.push(s); p.hasInit = true; }

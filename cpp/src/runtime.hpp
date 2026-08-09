@@ -128,6 +128,34 @@ static Value callFunc(Program& prog, std::vector<Value>& globals, int funcIndex,
     return runLoop(prog, globals, st, frames, handlers);
 }
 
+// Link the script's `extern fn` declarations against the host registry: every
+// declared native must be registered, with matching arity and param/return type
+// names (a variadic native accepts any arity; "Any" on either side matches
+// anything). Collects all problems so a bad wiring fails loudly at load, not
+// mid-frame. `--check` never runs this, so host-free type-checking still works.
+static void linkNatives(std::map<std::string, Parsed>& mods, std::vector<std::string>& order,
+                        NativeRegistry& natives, std::vector<std::string>& errs) {
+    auto tyName = [](const TyNodeP& n) -> std::string { return n ? (n->isFunc ? "fn" : n->name) : "Void"; };
+    for (auto& m : order) {
+        for (auto& ex : mods[m].externs) {
+            int idx = natives.find(ex.name);
+            if (idx < 0) { errs.push_back("undefined native '" + ex.name + "' (declared in module '" + m + "')"); continue; }
+            const NativeSig& sig = natives.entries[idx].sig;
+            std::vector<std::string> want;
+            for (size_t k = 0; k < ex.params.size(); k++) { if (ex.params[k] == "self") continue; want.push_back(k < ex.ptypes.size() && ex.ptypes[k] ? tyName(ex.ptypes[k]) : "Any"); }
+            std::string wantRet = ex.retType ? tyName(ex.retType) : "Void";
+            if (!sig.variadic) {
+                if (want.size() != sig.params.size()) { errs.push_back("native '" + ex.name + "': script declares " + std::to_string(want.size()) + " param(s), host provides " + std::to_string(sig.params.size())); continue; }
+                for (size_t k = 0; k < want.size(); k++)
+                    if (want[k] != sig.params[k] && want[k] != "Any" && sig.params[k] != "Any")
+                        errs.push_back("native '" + ex.name + "' param " + std::to_string(k + 1) + ": script declares '" + want[k] + "', host provides '" + sig.params[k] + "'");
+            }
+            if (wantRet != sig.ret && wantRet != "Any" && sig.ret != "Any")
+                errs.push_back("native '" + ex.name + "': script declares return '" + wantRet + "', host provides '" + sig.ret + "'");
+        }
+    }
+}
+
 // ---------------------------------------------------------------------
 // The embeddable runtime a C++ host (e.g. a game engine) drives.
 // ---------------------------------------------------------------------
@@ -151,6 +179,8 @@ struct Runtime {
             entryMod = loadModules(path, mods, order);
             TypeChecker tc(mods, order); tc.natives = &natives; tc.build(); tc.check();
             if (!tc.errors.empty()) { error.clear(); for (auto& e : tc.errors) { error += std::get<0>(e); if (std::get<1>(e)) error += ":" + std::to_string(std::get<1>(e)); error += ": " + std::get<2>(e) + "\n"; } return false; }
+            std::vector<std::string> linkErrs; linkNatives(mods, order, natives, linkErrs);   // verify extern decls against the registry
+            if (!linkErrs.empty()) { error = "link errors:\n"; for (auto& e : linkErrs) error += "  " + e + "\n"; return false; }
             prog.natives = &natives;
             std::map<std::string, int> globalsFunc, initFunc;
             buildProgram(mods, order, prog, globalsFunc, initFunc);

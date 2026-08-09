@@ -140,7 +140,7 @@ def test_lsp():
 # ---------------------------------------------------------------- embedding
 def test_embed():
     print("• embedding demos (build + golden stdout)")
-    for src in ["engine", "game", "hotreload", "externdemo"]:
+    for src in ["engine", "game", "hotreload", "externdemo", "linkcheck"]:
         exe = os.path.join(ROOT, "cpp", "embed", src)
         bc, bout = run([CXX, "-std=c++17", "-O2", "-o", exe, f"cpp/embed/{src}.cpp"])
         if bc != 0:

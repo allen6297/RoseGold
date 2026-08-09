@@ -85,9 +85,15 @@ Declaration = ClassDecl
 (* runs once when the module is loaded, dependencies first *)
 ModuleInit  = "init" , Suite ;
 
-(* a native function the host provides (FFI): a signature, no body.
-   Type-checked against this declaration; bound by name at runtime. -- SEMANTIC *)
-ExternDecl  = "extern" , FuncSig , NEWLINE ;
+(* Native FFI. `extern fn` declares a host-provided function (a signature, no
+   body); `extern type` declares an opaque foreign type (its only value is a host
+   handle -- cannot be constructed or inspected in-script). Several may be grouped
+   in an `extern:` block. Type-checked against these declarations (no host needed
+   for --check); the host runtime link-checks them against its registry at load,
+   then binds each by name. -- SEMANTIC *)
+ExternDecl  = "extern" , ( ExternMember
+                         | ":" , NEWLINE , INDENT , { ExternMember } , DEDENT ) ;
+ExternMember = ( FuncSig | "type" , Ident ) , NEWLINE ;
 
 
 (* ---------- Modifiers ---------- *)

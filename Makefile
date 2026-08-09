@@ -8,7 +8,7 @@ CXXFLAGS ?= -std=c++17 -O2
 BIN       = cpp/rosegoldc
 SRC       = cpp/src/main.cpp
 HEADERS   = $(wildcard cpp/src/*.hpp)
-EMBED     = engine game hotreload externdemo
+EMBED     = engine game hotreload externdemo linkcheck
 
 .PHONY: all build test ts-parity update-golden run fmt embed clean
 

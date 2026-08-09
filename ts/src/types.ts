@@ -52,11 +52,11 @@ interface ClassInfoT { generics: string[]; bounds: Bounds; extends: string; uses
 interface EnumInfoT { generics: string[]; variants: Map<string, Ty[]>; }
 interface TraitInfoT { generics: string[]; uses: string[]; methods: Map<string, Ty>; defaulted: Set<string>; }
 interface ExtInfoT { uses: string[]; methods: Map<string, [Ty, number]>; }
-interface ModTypes { classes: Map<string, ClassInfoT>; enums: Map<string, EnumInfoT>; traits: Map<string, TraitInfoT>; exts: Map<string, ExtInfoT>; values: Map<string, Ty>; pub: Map<string, Ty>; }
+interface ModTypes { classes: Map<string, ClassInfoT>; enums: Map<string, EnumInfoT>; traits: Map<string, TraitInfoT>; exts: Map<string, ExtInfoT>; foreign: Set<string>; values: Map<string, Ty>; pub: Map<string, Ty>; }   // foreign: opaque `extern type` names (nkind 4)
 const emptyClassInfo = (): ClassInfoT => ({ generics: [], bounds: new Map(), extends: "", uses: [], fields: new Map(), methods: new Map(), ctorParams: [] });
 const emptyEnumInfo = (): EnumInfoT => ({ generics: [], variants: new Map() });
 const emptyTraitInfo = (): TraitInfoT => ({ generics: [], uses: [], methods: new Map(), defaulted: new Set() });
-const emptyModTypes = (): ModTypes => ({ classes: new Map(), enums: new Map(), traits: new Map(), exts: new Map(), values: new Map(), pub: new Map() });
+const emptyModTypes = (): ModTypes => ({ classes: new Map(), enums: new Map(), traits: new Map(), exts: new Map(), foreign: new Set(), values: new Map(), pub: new Map() });
 
 // An environment binding: a value's type (plus a declaration site, unused here).
 interface Binding { ty: Ty | null; line: number; }
@@ -101,6 +101,7 @@ export class TypeChecker {
     if (MT.classes.has(name)) return tNamed(name, 0, args);
     if (MT.enums.has(name)) return tNamed(name, 1, args);
     if (MT.traits.has(name)) return tNamed(name, 2, args);
+    if (MT.foreign.has(name)) return tNamed(name, 4, args);   // opaque foreign (extern type)
     if (name === "Vec2" || name === "Vec3" || name === "Vec") return tPrim("Vec");
     this.err(0, "unknown type '" + name + "'"); return tAny();
   }
@@ -186,6 +187,7 @@ export class TypeChecker {
       for (const C of P.classes) if (!MT.classes.has(C.name)) MT.classes.set(C.name, emptyClassInfo());
       for (const Tr of P.traits) if (!MT.traits.has(Tr.name)) MT.traits.set(Tr.name, emptyTraitInfo());
       for (const E of P.enums) if (!MT.enums.has(E.name)) MT.enums.set(E.name, emptyEnumInfo());
+      for (const t of P.externTypes) MT.foreign.add(t);
     }
     for (const m of this.order) this.buildModule(m);
     for (const m of this.order) this.Tm(m).pub = this.pubValues(m, new Set());

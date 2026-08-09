@@ -113,12 +113,12 @@ export const mkEnum = (): EnumAst =>
 export interface Import { path: string; alias: string; names: string[]; pub: boolean; }
 
 export interface Parsed {
-  module: string; imports: Import[]; funcs: Func[]; externs: Func[];
+  module: string; imports: Import[]; funcs: Func[]; externs: Func[]; externTypes: string[];
   globals: Stmt[]; initBody: Stmt[]; hasInit: boolean;
   classes: ClassAst[]; traits: TraitAst[]; extensions: ExtendAst[]; enums: EnumAst[];
 }
 export const mkParsed = (): Parsed => ({
-  module: "", imports: [], funcs: [], externs: [], globals: [], initBody: [], hasInit: false,
+  module: "", imports: [], funcs: [], externs: [], externTypes: [], globals: [], initBody: [], hasInit: false,
   classes: [], traits: [], extensions: [], enums: [],
 });
 

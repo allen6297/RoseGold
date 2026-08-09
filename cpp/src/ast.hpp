@@ -37,6 +37,6 @@ struct TraitAst { std::string name; int nameLine = 0, nameCol = 1; std::vector<s
 struct ExtendAst { std::string typeName; int nameLine = 0, nameCol = 1; std::vector<std::string> uses; std::vector<Func> methods; };  // retroactive conformance: `extend Type uses Trait`
 struct EnumAst { std::string name; int nameLine = 0, nameCol = 1; std::vector<std::string> generics; int vis = 0; std::vector<std::pair<std::string, std::vector<TyNodeP>>> variants; };
 struct Import { std::string path, alias; std::vector<std::string> names; bool pub = false; };
-struct Parsed { std::string module; std::vector<Import> imports; std::vector<Func> funcs; std::vector<Func> externs; std::vector<Stmt> globals; std::vector<Stmt> initBody; bool hasInit = false; std::vector<ClassAst> classes; std::vector<TraitAst> traits; std::vector<ExtendAst> extensions; std::vector<EnumAst> enums; };
+struct Parsed { std::string module; std::vector<Import> imports; std::vector<Func> funcs; std::vector<Func> externs; std::vector<std::string> externTypes; std::vector<Stmt> globals; std::vector<Stmt> initBody; bool hasInit = false; std::vector<ClassAst> classes; std::vector<TraitAst> traits; std::vector<ExtendAst> extensions; std::vector<EnumAst> enums; };   // externTypes: opaque foreign (`extern type`) type names
 struct ParseError : std::runtime_error { using std::runtime_error::runtime_error; };
 

@@ -31,7 +31,7 @@ struct ClassInfoT { std::vector<std::string> generics; Bounds bounds; std::strin
 struct EnumInfoT { std::vector<std::string> generics; std::map<std::string, std::vector<TyP>> variants; };
 struct TraitInfoT { std::vector<std::string> generics; std::vector<std::string> uses; std::map<std::string, TyP> methods; std::set<std::string> defaulted; };
 struct ExtInfoT { std::vector<std::string> uses; std::map<std::string, std::pair<TyP, int>> methods; };   // retroactive `extend Type uses Trait`
-struct ModTypes { std::map<std::string, ClassInfoT> classes; std::map<std::string, EnumInfoT> enums; std::map<std::string, TraitInfoT> traits; std::map<std::string, ExtInfoT> exts; std::map<std::string, TyP> values; std::map<std::string, TyP> pub; };
+struct ModTypes { std::map<std::string, ClassInfoT> classes; std::map<std::string, EnumInfoT> enums; std::map<std::string, TraitInfoT> traits; std::map<std::string, ExtInfoT> exts; std::set<std::string> foreign; std::map<std::string, TyP> values; std::map<std::string, TyP> pub; };   // foreign: opaque `extern type` names (nkind 4)
 
 // One resolved identifier occurrence — feeds LSP hover / go-to-definition / completion.
 struct Occ {
@@ -148,6 +148,7 @@ struct TypeChecker {
         if (T[m].classes.count(name)) return tNamed(name, 0, args);
         if (T[m].enums.count(name)) return tNamed(name, 1, args);
         if (T[m].traits.count(name)) return tNamed(name, 2, args);
+        if (T[m].foreign.count(name)) return tNamed(name, 4, args);   // opaque foreign (extern type)
         if (name == "Vec2" || name == "Vec3" || name == "Vec") return tPrim("Vec");   // built-in vectors (a user class/enum/trait of the same name wins)
         err(0, "unknown type '" + name + "'"); return tAny();
     }
@@ -223,7 +224,7 @@ struct TypeChecker {
         TyP ft = tFunc(ps, f.retType ? resolveType(f.retType, g, m) : tPrim("Void")); ft->bounds = f.bounds; return ft;
     }
     void build() {
-        for (auto& m : order) { auto& P = mods[m]; for (auto& C : P.classes) T[m].classes[C.name]; for (auto& Tr : P.traits) T[m].traits[Tr.name]; for (auto& E : P.enums) T[m].enums[E.name]; }
+        for (auto& m : order) { auto& P = mods[m]; for (auto& C : P.classes) T[m].classes[C.name]; for (auto& Tr : P.traits) T[m].traits[Tr.name]; for (auto& E : P.enums) T[m].enums[E.name]; for (auto& t : P.externTypes) T[m].foreign.insert(t); }
         for (auto& m : order) buildModule(m);
         for (auto& m : order) T[m].pub = pubValues(m, {});
     }
@@ -330,7 +331,8 @@ struct TypeChecker {
         // coroutines: coroutine(fn) -> a coroutine; resume(coro[, arg]) runs to the next yield/return; done(coro) -> Bool
         b["coroutine"] = tFunc({tAny()}, tAny(), true); b["resume"] = tFunc({tAny()}, tAny(), true); b["done"] = tFunc({tAny()}, tPrim("Bool"));
         b["__emit"] = tFunc({tAny()}, tPrim("Void"), true);   // internal: fires a signal — __emit(listenerList, args...)
-        if (natives) for (auto& e : natives->entries) { std::vector<TyP> ps; for (auto& p : e.sig.params) ps.push_back(nativeTy(p)); b[e.name] = tFunc(ps, nativeTy(e.sig.ret), e.sig.variadic); }
+        // Host natives are NOT injected ambiently: a script must declare each with `extern fn`,
+        // and rt.load() link-checks those declarations against the registry (see linkNatives).
         return b;
     }
     Binding lookup(const std::string& name, Env& env) {

@@ -1,0 +1,3 @@
+load rejected (as expected):
+link errors:
+  undefined native 'host_missing' (declared in module 'linkfail')

@@ -27,3 +27,4 @@ cpp/embed/engine
 cpp/embed/game
 cpp/embed/hotreload
 cpp/embed/externdemo
+cpp/embed/linkcheck

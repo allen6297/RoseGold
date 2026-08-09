@@ -1,9 +1,14 @@
 module behavior
 
-# A game "behavior" script driven by a C++ host. It calls engine functions
-# (engine_log / input_axis / move_by) that the host registered via the FFI, and
+# A game "behavior" script driven by a C++ host. It declares the engine
+# functions the host provides (checked against the host's registry at load), and
 # the host calls update(dt) every frame. Module globals below are the component's
 # state -- they persist across frames because the host reuses one runtime.
+
+extern:
+    fn engine_log(msg: String) -> Void
+    fn input_axis() -> Float
+    fn move_by(dx: Float, dy: Float) -> Void
 
 var x = 0.0
 var vx = 0.0
