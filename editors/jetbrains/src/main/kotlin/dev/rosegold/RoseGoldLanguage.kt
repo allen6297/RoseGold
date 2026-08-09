@@ -25,6 +25,7 @@ class RoseGoldTokenType(debug: String) : IElementType(debug, RoseGoldLanguage)
 
 object RoseGoldTokens {
     val KEYWORD = RoseGoldTokenType("ROSEGOLD_KEYWORD")
+    val CONTROL = RoseGoldTokenType("ROSEGOLD_CONTROL")
     val IDENT = RoseGoldTokenType("ROSEGOLD_IDENTIFIER")
     val FUNCTION_DECL = RoseGoldTokenType("ROSEGOLD_FUNCTION_DECL")
     val FUNCTION_CALL = RoseGoldTokenType("ROSEGOLD_FUNCTION_CALL")

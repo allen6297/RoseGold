@@ -2,6 +2,11 @@
   <!-- Distinct defaults for the two function keys, which otherwise resolve to the
        same color under the light Default scheme. Everything else inherits the theme. -->
   <attributes>
+    <option name="ROSEGOLD_CONTROL">
+      <value>
+        <option name="FOREGROUND" value="9b2393"/>
+      </value>
+    </option>
     <option name="ROSEGOLD_FUNCTION_DECL">
       <value>
         <option name="FOREGROUND" value="9e5400"/>

@@ -46,6 +46,9 @@ class RoseGoldLexer : LexerBase() {
         "as", "true", "false"
     )
 
+    // Control-flow "jump" statements, colored apart from the other keywords.
+    private val control = setOf("break", "continue", "return", "yield", "pass", "raise")
+
     override fun start(buffer: CharSequence, startOffset: Int, endOffset: Int, initialState: Int) {
         buf = buffer; bufEnd = endOffset; tokStart = startOffset; scan()
     }
@@ -121,6 +124,7 @@ class RoseGoldLexer : LexerBase() {
                 while (i < bufEnd && (buf[i].isLetterOrDigit() || buf[i] == '_')) i++
                 val w = buf.subSequence(tokStart, i).toString()
                 tok = when {
+                    control.contains(w) -> RoseGoldTokens.CONTROL   // break/continue/return/yield/pass/raise
                     keywords.contains(w) -> RoseGoldTokens.KEYWORD
                     w[0].isUpperCase() -> RoseGoldTokens.TYPE   // types / enum variants / constructors
                     precededByFn(tokStart) -> RoseGoldTokens.FUNCTION_DECL   // `fn name`
