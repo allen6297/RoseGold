@@ -60,6 +60,15 @@ class RoseGoldLexer : LexerBase() {
         tokStart = tokEnd; scan()
     }
 
+    // True if the just-lexed identifier is immediately followed (past inline spaces)
+    // by '(' -- a function call or definition. Newlines aren't skipped, so a name at
+    // end of line isn't miscolored.
+    private fun followedByCall(from: Int): Boolean {
+        var j = from
+        while (j < bufEnd && (buf[j] == ' ' || buf[j] == '\t')) j++
+        return j < bufEnd && buf[j] == '('
+    }
+
     private fun scan() {
         if (tokStart >= bufEnd) {
             tok = null; tokEnd = tokStart; return
@@ -101,7 +110,8 @@ class RoseGoldLexer : LexerBase() {
                 val w = buf.subSequence(tokStart, i).toString()
                 tok = when {
                     keywords.contains(w) -> RoseGoldTokens.KEYWORD
-                    w[0].isUpperCase() -> RoseGoldTokens.TYPE
+                    w[0].isUpperCase() -> RoseGoldTokens.TYPE   // types / enum variants / constructors
+                    followedByCall(i) -> RoseGoldTokens.FUNCTION  // `name(` -> a call or fn definition
                     else -> RoseGoldTokens.IDENT
                 }
             }

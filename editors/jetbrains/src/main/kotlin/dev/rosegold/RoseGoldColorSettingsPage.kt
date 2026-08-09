@@ -45,6 +45,7 @@ class RoseGoldColorSettingsPage : ColorSettingsPage {
     companion object {
         private val DESCRIPTORS = arrayOf(
             AttributesDescriptor("Keyword", C.KEYWORD),
+            AttributesDescriptor("Function", C.FUNCTION),
             AttributesDescriptor("Type", C.TYPE),
             AttributesDescriptor("Number", C.NUMBER),
             AttributesDescriptor("String", C.STRING),

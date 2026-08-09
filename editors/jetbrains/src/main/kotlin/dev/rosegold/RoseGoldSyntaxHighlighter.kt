@@ -15,6 +15,7 @@ class RoseGoldSyntaxHighlighter : SyntaxHighlighterBase() {
 
     override fun getTokenHighlights(tokenType: IElementType): Array<TextAttributesKey> = when (tokenType) {
         RoseGoldTokens.KEYWORD -> pack(KEYWORD)
+        RoseGoldTokens.FUNCTION -> pack(FUNCTION)
         RoseGoldTokens.TYPE -> pack(TYPE)
         RoseGoldTokens.NUMBER -> pack(NUMBER)
         RoseGoldTokens.STRING -> pack(STRING)
@@ -30,6 +31,7 @@ class RoseGoldSyntaxHighlighter : SyntaxHighlighterBase() {
             TextAttributesKey.createTextAttributesKey(name, base)
 
         val KEYWORD = key("ROSEGOLD_KEYWORD", D.KEYWORD)
+        val FUNCTION = key("ROSEGOLD_FUNCTION", D.FUNCTION_DECLARATION)
         val TYPE = key("ROSEGOLD_TYPE", D.CLASS_NAME)
         val NUMBER = key("ROSEGOLD_NUMBER", D.NUMBER)
         val STRING = key("ROSEGOLD_STRING", D.STRING)
