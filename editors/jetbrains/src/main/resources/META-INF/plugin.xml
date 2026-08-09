@@ -36,6 +36,12 @@
         implementationClass="dev.rosegold.RoseGoldBraceMatcher"/>
     <colorSettingsPage
         implementation="dev.rosegold.RoseGoldColorSettingsPage"/>
+    <additionalTextAttributes
+        scheme="Default"
+        file="colorSchemes/RoseGoldDefault.xml"/>
+    <additionalTextAttributes
+        scheme="Darcula"
+        file="colorSchemes/RoseGoldDarcula.xml"/>
   </extensions>
 
   <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">

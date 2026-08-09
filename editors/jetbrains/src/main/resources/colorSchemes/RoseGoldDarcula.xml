@@ -1,0 +1,16 @@
+<scheme name="Darcula" version="142" parent_scheme="Darcula">
+  <!-- Distinct defaults for the two function keys, which otherwise resolve to the
+       same color under Darcula. Everything else inherits the theme. -->
+  <attributes>
+    <option name="ROSEGOLD_FUNCTION_DECL">
+      <value>
+        <option name="FOREGROUND" value="ffc66d"/>
+      </value>
+    </option>
+    <option name="ROSEGOLD_FUNCTION_CALL">
+      <value>
+        <option name="FOREGROUND" value="57aaf7"/>
+      </value>
+    </option>
+  </attributes>
+</scheme>
