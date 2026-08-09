@@ -13,7 +13,7 @@ import {
   ParseError,
 } from "./ast.ts";
 
-interface PL { names: string[]; pos: Array<[number, number]>; types: (TyNode | null)[]; }
+interface PL { names: string[]; lines: number[]; types: (TyNode | null)[]; }
 
 export class Parser {
   toks: Token[];
@@ -84,7 +84,7 @@ export class Parser {
   }
 
   params(): PL {
-    const pl: PL = { names: [], pos: [], types: [] };
+    const pl: PL = { names: [], lines: [], types: [] };
     this.eatOp("(");
     if (!this.isOp(")")) { this.param(pl); while (this.isOp(",")) { this.i++; this.param(pl); } }
     this.eatOp(")");
@@ -93,7 +93,7 @@ export class Parser {
   param(pl: PL): void {
     const nt = this.peek();
     pl.names.push(this.eatIdent());
-    pl.pos.push([nt.line, nt.col]);
+    pl.lines.push(nt.line);
     if (this.isOp(":")) { this.i++; pl.types.push(this.parseType()); } else pl.types.push(null);
   }
 
@@ -110,9 +110,9 @@ export class Parser {
 
   func(): Func {
     this.eatKw("fn"); const f = mkFunc(); const nt = this.peek();
-    f.name = this.eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col;
+    f.name = this.eatIdent(); f.nameLine = nt.line;
     f.generics = this.genericNames(f.bounds);
-    const pl = this.params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types;
+    const pl = this.params(); f.params = pl.names; f.paramLines = pl.lines; f.ptypes = pl.types;
     if (this.isOp("->")) { this.i++; f.retType = this.parseType(); }
     f.body = this.suite();
     return f;
@@ -120,9 +120,9 @@ export class Parser {
   // trait method / extern: an abstract signature, or a default impl with a `:` body.
   funcSig(): Func {
     this.eatKw("fn"); const f = mkFunc(); f.isSig = true; const nt = this.peek();
-    f.name = this.eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col;
+    f.name = this.eatIdent(); f.nameLine = nt.line;
     f.generics = this.genericNames(f.bounds);
-    const pl = this.params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types;
+    const pl = this.params(); f.params = pl.names; f.paramLines = pl.lines; f.ptypes = pl.types;
     if (this.isOp("->")) { this.i++; f.retType = this.parseType(); }
     if (this.isOp(":")) f.body = this.suite();
     return f;
@@ -130,7 +130,7 @@ export class Parser {
 
   traitDecl(): TraitAst {
     this.eatKw("trait"); const Tr = mkTrait(); const nt = this.peek();
-    Tr.name = this.eatIdent(); Tr.nameLine = nt.line; Tr.nameCol = nt.col;
+    Tr.name = this.eatIdent(); Tr.nameLine = nt.line;
     Tr.generics = this.genericNames(Tr.bounds);
     if (this.isKw("uses")) { this.i++; Tr.uses.push(this.parseType().name); while (this.isOp(",")) { this.i++; Tr.uses.push(this.parseType().name); } }
     this.beginBlock();
@@ -146,7 +146,7 @@ export class Parser {
 
   classDecl(): ClassAst {
     this.eatKw("class"); const C = mkClass(); const nt = this.peek();
-    C.name = this.eatIdent(); C.nameLine = nt.line; C.nameCol = nt.col;
+    C.name = this.eatIdent(); C.nameLine = nt.line;
     C.generics = this.genericNames(C.bounds);
     if (this.isKw("extends")) { this.i++; C.extends = this.parseType().name; }
     if (this.isKw("uses")) { this.i++; C.uses.push(this.parseType().name); while (this.isOp(",")) { this.i++; C.uses.push(this.parseType().name); } }
@@ -155,17 +155,17 @@ export class Parser {
       const mv = this.parseVis();
       if (this.isKw("var") || this.isKw("const")) {
         this.i++; const f = mkField(); f.vis = mv; const fnt = this.peek();
-        f.name = this.eatIdent(); f.nameLine = fnt.line; f.nameCol = fnt.col;
+        f.name = this.eatIdent(); f.nameLine = fnt.line;
         if (this.isOp(":")) { this.i++; f.type = this.parseType(); }
         if (this.isOp("=")) { this.i++; f.init = this.expr(); f.hasInit = true; }
         C.fields.push(f);
       } else if (this.isKw("init")) {
         this.i++; C.hasCtor = true; const pl = this.params();
-        C.ctorParams = pl.names; C.ctorParamPos = pl.pos; C.ctorPtypes = pl.types; C.ctorBody = this.suite();
+        C.ctorParams = pl.names; C.ctorParamLines = pl.lines; C.ctorPtypes = pl.types; C.ctorBody = this.suite();
       } else if (this.isKw("signal")) {
         this.i++; const sg = mkSignal(); const snt = this.peek();
-        sg.name = this.eatIdent(); sg.nameLine = snt.line; sg.nameCol = snt.col;
-        const pl = this.params(); sg.params = pl.names; sg.paramPos = pl.pos; sg.ptypes = pl.types;
+        sg.name = this.eatIdent(); sg.nameLine = snt.line;
+        const pl = this.params(); sg.params = pl.names; sg.paramLines = pl.lines; sg.ptypes = pl.types;
         C.signals.push(sg);
       } else if (this.isKw("fn")) {
         const m = this.func(); m.vis = mv; C.methods.push(m);
@@ -178,7 +178,7 @@ export class Parser {
 
   extendDecl(): ExtendAst {
     this.eatKw("extend"); const X = mkExtend(); const nt = this.peek();
-    X.typeName = this.eatIdent(); X.nameLine = nt.line; X.nameCol = nt.col;
+    X.typeName = this.eatIdent(); X.nameLine = nt.line;
     if (this.isKw("uses")) { this.i++; X.uses.push(this.parseType().name); while (this.isOp(",")) { this.i++; X.uses.push(this.parseType().name); } }
     this.beginBlock();
     while (!this.is("DEDENT") && !this.is("END")) {
@@ -193,7 +193,7 @@ export class Parser {
 
   enumDecl(): EnumAst {
     this.eatKw("enum"); const E = mkEnum(); const nt = this.peek();
-    E.name = this.eatIdent(); E.nameLine = nt.line; E.nameCol = nt.col;
+    E.name = this.eatIdent(); E.nameLine = nt.line;
     const eb: Bounds = new Map(); E.generics = this.genericNames(eb);
     this.beginBlock();
     while (!this.is("DEDENT") && !this.is("END")) {
@@ -231,7 +231,7 @@ export class Parser {
 
   varStmt(): Stmt {
     const s = mkStmt("VAR"); const c = this.isKw("const"); this.i++; const nt = this.peek();
-    s.name = this.eatIdent(); s.nameLine = nt.line; s.nameCol = nt.col;
+    s.name = this.eatIdent(); s.nameLine = nt.line;
     if (this.isOp(":")) { this.i++; s.vtype = this.parseType(); }
     if (this.isOp("=")) { this.i++; s.expr = this.expr(); s.hasExpr = true; }
     else if (c) this.err("const must be initialized");
@@ -253,12 +253,12 @@ export class Parser {
   }
   forStmt(): Stmt {
     this.eatKw("for"); const s = mkStmt("FOR"); const nt = this.peek();
-    s.name = this.eatIdent(); s.nameLine = nt.line; s.nameCol = nt.col;
+    s.name = this.eatIdent(); s.nameLine = nt.line;
     this.eatKw("in"); s.expr = this.expr(); s.hasExpr = true; s.body = this.suite(); return s;
   }
   tryStmt(): Stmt {
     this.eatKw("try"); const s = mkStmt("TRY"); s.body = this.suite(); this.eatKw("catch"); const nt = this.peek();
-    s.name = this.eatIdent(); s.nameLine = nt.line; s.nameCol = nt.col; s.elseBody = this.suite(); return s;
+    s.name = this.eatIdent(); s.nameLine = nt.line; s.elseBody = this.suite(); return s;
   }
 
   expr(): Expr { return this.orE(); }
@@ -279,7 +279,7 @@ export class Parser {
   addE(): Expr { return this.binL(["+", "-"], () => this.mulE()); }
   mulE(): Expr { return this.binL(["*", "/", "%"], () => this.unaryE()); }
   unaryE(): Expr {
-    if (this.isKw("yield")) { const t = this.peek(); this.i++; const y = mkExpr("YIELD"); y.line = t.line; y.col = t.col; y.lhs = this.expr(); return y; }
+    if (this.isKw("yield")) { const t = this.peek(); this.i++; const y = mkExpr("YIELD"); y.line = t.line; y.lhs = this.expr(); return y; }
     if (this.isOp("!") || this.isOp("-")) { const op = this.next().value; const e = mkExpr("UNARY"); e.op = op; e.lhs = this.unaryE(); return e; }
     return this.postfixE();
   }
@@ -293,7 +293,7 @@ export class Parser {
       } else if (this.isOp("[")) {
         this.i++; const idx = mkExpr("INDEX"); idx.lhs = e; idx.line = idx.lhs.line; idx.rhs = this.expr(); this.eatOp("]"); e = idx;
       } else if (this.isOp(".")) {
-        this.i++; const m = mkExpr("MEMBER"); m.lhs = e; const ft = this.peek(); m.sval = this.eatIdent(); m.line = ft.line; m.col = ft.col; e = m;
+        this.i++; const m = mkExpr("MEMBER"); m.lhs = e; const ft = this.peek(); m.sval = this.eatIdent(); m.line = ft.line; e = m;
       } else break;
     }
     return e;
@@ -317,7 +317,7 @@ export class Parser {
     if (t.kind === "INT" || t.kind === "FLT" || t.kind === "STR" || this.isKw("true") || this.isKw("false")) return this.litExpr();
     if (this.isKw("match")) return this.matchExpr();
     if (this.isKw("fn")) return this.closureExpr();
-    if (t.kind === "IDENT") { const e = mkExpr("NAME"); e.line = t.line; e.col = t.col; this.i++; e.sval = t.value; return e; }
+    if (t.kind === "IDENT") { const e = mkExpr("NAME"); e.line = t.line; this.i++; e.sval = t.value; return e; }
     if (this.isOp("(")) { this.i++; const inner = this.expr(); this.eatOp(")"); return inner; }
     if (this.isOp("[")) {
       this.i++; const e2 = mkExpr("LIST");

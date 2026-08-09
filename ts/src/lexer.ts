@@ -16,7 +16,6 @@ export interface Token {
   kind: Kind;
   value: string;   // literal text / identifier / operator; "" for layout tokens
   line: number;    // 1-based
-  col: number;     // 1-based, in the comment-stripped source
 }
 
 export class LexError extends Error {}
@@ -87,14 +86,12 @@ export function lex(raw: string): Token[] {
   let i = 0;
   const n = src.length;
   let line = 1;
-  let lineStartByte = 0;
   const toks: Token[] = [];
   const indents: number[] = [0];
   let paren = 0;
   let lineStart = true;
 
-  const emit = (kind: Kind, value: string, startByte: number) =>
-    toks.push({ kind, value, line, col: startByte - lineStartByte + 1 });
+  const emit = (kind: Kind, value: string) => toks.push({ kind, value, line });
   const top = () => indents[indents.length - 1];
   const backKind = (): Kind | undefined =>
     toks.length ? toks[toks.length - 1].kind : undefined;
@@ -108,24 +105,23 @@ export function lex(raw: string): Token[] {
       let width = 0;
       while (i < n && (src[i] === " " || src[i] === "\t")) { width += src[i] === "\t" ? 8 : 1; i++; }
       if (i >= n) break;
-      if (src[i] === "\n") { line++; i++; lineStartByte = i; continue; }  // blank line
-      if (width > top()) { indents.push(width); emit("INDENT", "", i); }
+      if (src[i] === "\n") { line++; i++; continue; }  // blank line
+      if (width > top()) { indents.push(width); emit("INDENT", ""); }
       else if (width < top()) {
-        while (width < top()) { indents.pop(); emit("DEDENT", "", i); }
+        while (width < top()) { indents.pop(); emit("DEDENT", ""); }
         if (width !== top()) throw new LexError("inconsistent indentation at line " + line);
       }
       lineStart = false;
       continue;
     }
 
-    const sB = i;
     const c = src[i];
 
     if (c === "\n") {
       if (paren === 0) {
-        if (toks.length && !isLayout(backKind())) emit("NEWLINE", "", sB);
-        line++; i++; lineStartByte = i; lineStart = true;
-      } else { line++; i++; lineStartByte = i; }         // newline inside ( ) / [ ] is insignificant
+        if (toks.length && !isLayout(backKind())) emit("NEWLINE", "");
+        line++; i++; lineStart = true;
+      } else { line++; i++; }         // newline inside ( ) / [ ] is insignificant
       continue;
     }
     if (c === " " || c === "\t" || c === "\r") { i++; continue; }
@@ -146,7 +142,7 @@ export function lex(raw: string): Token[] {
       }
       if (i >= n) throw new LexError("unterminated string at line " + line);
       i++;
-      emit("STR", buf, sB);
+      emit("STR", buf);
       continue;
     }
 
@@ -158,7 +154,7 @@ export function lex(raw: string): Token[] {
         flt = true; i++;
         while (i < n && isDigit(src[i])) i++;
       }
-      emit(flt ? "FLT" : "INT", src.slice(st, i), sB);
+      emit(flt ? "FLT" : "INT", src.slice(st, i));
       continue;
     }
 
@@ -166,15 +162,15 @@ export function lex(raw: string): Token[] {
       const st = i;
       while (i < n && (isAlnum(src[i]) || src[i] === "_")) i++;
       const w = src.slice(st, i);
-      emit(KEYWORDS.has(w) ? "KW" : "IDENT", w, sB);
+      emit(KEYWORDS.has(w) ? "KW" : "IDENT", w);
       continue;
     }
 
     const two = i + 1 < n ? src.slice(i, i + 2) : "";
-    if (TWO.has(two)) { emit("OP", two, sB); i += 2; continue; }
+    if (TWO.has(two)) { emit("OP", two); i += 2; continue; }
 
     if (SINGLE.includes(c)) {
-      emit("OP", c, sB);
+      emit("OP", c);
       if (c === "(" || c === "[") paren++;
       else if (c === ")" || c === "]") { if (paren > 0) paren--; }
       i++;
@@ -185,8 +181,8 @@ export function lex(raw: string): Token[] {
   }
 
   // Terminate the final line, close any open indentation, and cap with END.
-  if (toks.length && !isLayout(backKind())) emit("NEWLINE", "", i);
-  while (indents.length > 1) { indents.pop(); emit("DEDENT", "", i); }
-  emit("END", "", i);
+  if (toks.length && !isLayout(backKind())) emit("NEWLINE", "");
+  while (indents.length > 1) { indents.pop(); emit("DEDENT", ""); }
+  emit("END", "");
   return toks;
 }

@@ -27,11 +27,11 @@ export interface Expr {
   arms: Arm[];
   params: string[];                    // CLOSURE param names
   ptypes: (TyNode | null)[]; retType: TyNode | null;
-  line: number; col: number;
+  line: number;
 }
 export const mkExpr = (k: ExprKind): Expr => ({
   k, ival: 0, dval: 0, bval: false, sval: "", op: "", lhs: null, rhs: null,
-  args: [], arms: [], params: [], ptypes: [], retType: null, line: 0, col: 1,
+  args: [], arms: [], params: [], ptypes: [], retType: null, line: 0,
 });
 
 export type StmtKind =
@@ -40,13 +40,13 @@ export type StmtKind =
 
 export interface Stmt {
   k: StmtKind;
-  name: string; nameLine: number; nameCol: number;
+  name: string; nameLine: number;
   target: Expr | null; expr: Expr | null; hasExpr: boolean;
   vtype: TyNode | null; vis: number;
   body: Stmt[]; elifs: Array<[Expr, Stmt[]]>; elseBody: Stmt[]; hasElse: boolean;
 }
 export const mkStmt = (k: StmtKind): Stmt => ({
-  k, name: "", nameLine: 0, nameCol: 1, target: null, expr: null, hasExpr: false,
+  k, name: "", nameLine: 0, target: null, expr: null, hasExpr: false,
   vtype: null, vis: 0, body: [], elifs: [], elseBody: [], hasElse: false,
 });
 
@@ -54,61 +54,61 @@ export const mkStmt = (k: StmtKind): Stmt => ({
 export type Bounds = Map<string, string[]>;
 
 export interface Func {
-  name: string; nameLine: number; nameCol: number;
-  params: string[]; paramPos: Array<[number, number]>; ptypes: (TyNode | null)[];
+  name: string; nameLine: number;
+  params: string[]; paramLines: number[]; ptypes: (TyNode | null)[];
   retType: TyNode | null; generics: string[]; bounds: Bounds;
   isSig: boolean; vis: number; body: Stmt[];
 }
 export const mkFunc = (): Func => ({
-  name: "", nameLine: 0, nameCol: 1, params: [], paramPos: [], ptypes: [],
+  name: "", nameLine: 0, params: [], paramLines: [], ptypes: [],
   retType: null, generics: [], bounds: new Map(), isSig: false, vis: 0, body: [],
 });
 
 export interface Field {
-  name: string; nameLine: number; nameCol: number;
+  name: string; nameLine: number;
   type: TyNode | null; vis: number; init: Expr | null; hasInit: boolean;
 }
 export const mkField = (): Field =>
-  ({ name: "", nameLine: 0, nameCol: 1, type: null, vis: 0, init: null, hasInit: false });
+  ({ name: "", nameLine: 0, type: null, vis: 0, init: null, hasInit: false });
 
 export interface SignalDecl {
-  name: string; nameLine: number; nameCol: number;
-  params: string[]; paramPos: Array<[number, number]>; ptypes: (TyNode | null)[];
+  name: string; nameLine: number;
+  params: string[]; paramLines: number[]; ptypes: (TyNode | null)[];
 }
 export const mkSignal = (): SignalDecl =>
-  ({ name: "", nameLine: 0, nameCol: 1, params: [], paramPos: [], ptypes: [] });
+  ({ name: "", nameLine: 0, params: [], paramLines: [], ptypes: [] });
 
 export interface ClassAst {
-  name: string; nameLine: number; nameCol: number;
+  name: string; nameLine: number;
   generics: string[]; bounds: Bounds; extends: string; uses: string[]; vis: number;
   fields: Field[]; signals: SignalDecl[];
-  hasCtor: boolean; ctorParams: string[]; ctorParamPos: Array<[number, number]>;
+  hasCtor: boolean; ctorParams: string[]; ctorParamLines: number[];
   ctorPtypes: (TyNode | null)[]; ctorBody: Stmt[]; methods: Func[];
 }
 export const mkClass = (): ClassAst => ({
-  name: "", nameLine: 0, nameCol: 1, generics: [], bounds: new Map(), extends: "", uses: [], vis: 0,
-  fields: [], signals: [], hasCtor: false, ctorParams: [], ctorParamPos: [], ctorPtypes: [], ctorBody: [], methods: [],
+  name: "", nameLine: 0, generics: [], bounds: new Map(), extends: "", uses: [], vis: 0,
+  fields: [], signals: [], hasCtor: false, ctorParams: [], ctorParamLines: [], ctorPtypes: [], ctorBody: [], methods: [],
 });
 
 export interface TraitAst {
-  name: string; nameLine: number; nameCol: number;
+  name: string; nameLine: number;
   generics: string[]; bounds: Bounds; uses: string[]; vis: number; methods: Func[];
 }
 export const mkTrait = (): TraitAst =>
-  ({ name: "", nameLine: 0, nameCol: 1, generics: [], bounds: new Map(), uses: [], vis: 0, methods: [] });
+  ({ name: "", nameLine: 0, generics: [], bounds: new Map(), uses: [], vis: 0, methods: [] });
 
 export interface ExtendAst {
-  typeName: string; nameLine: number; nameCol: number; uses: string[]; methods: Func[];
+  typeName: string; nameLine: number; uses: string[]; methods: Func[];
 }
 export const mkExtend = (): ExtendAst =>
-  ({ typeName: "", nameLine: 0, nameCol: 1, uses: [], methods: [] });
+  ({ typeName: "", nameLine: 0, uses: [], methods: [] });
 
 export interface EnumAst {
-  name: string; nameLine: number; nameCol: number;
+  name: string; nameLine: number;
   generics: string[]; vis: number; variants: Array<[string, TyNode[]]>;
 }
 export const mkEnum = (): EnumAst =>
-  ({ name: "", nameLine: 0, nameCol: 1, generics: [], vis: 0, variants: [] });
+  ({ name: "", nameLine: 0, generics: [], vis: 0, variants: [] });
 
 export interface Import { path: string; alias: string; names: string[]; pub: boolean; }
 

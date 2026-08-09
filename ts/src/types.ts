@@ -59,8 +59,8 @@ const emptyTraitInfo = (): TraitInfoT => ({ generics: [], uses: [], methods: new
 const emptyModTypes = (): ModTypes => ({ classes: new Map(), enums: new Map(), traits: new Map(), exts: new Map(), values: new Map(), pub: new Map() });
 
 // An environment binding: a value's type (plus a declaration site, unused here).
-interface Binding { ty: Ty | null; line: number; col: number; }
-const bind = (ty: Ty | null, line = 0, col = 0): Binding => ({ ty, line, col });
+interface Binding { ty: Ty | null; line: number; }
+const bind = (ty: Ty | null, line = 0): Binding => ({ ty, line });
 type Scope = Map<string, Binding>;
 type Env = Scope[];
 
@@ -480,16 +480,16 @@ export class TypeChecker {
   checkStmts(ss: Stmt[], env: Env): void { env.push(new Map()); for (const s of ss) this.checkStmt(s, env); env.pop(); }
   checkStmt(s: Stmt, env: Env): void {
     switch (s.k) {
-      case "VAR": { let t = s.hasExpr ? this.infer(s.expr!, env) : tAny(); if (s.vtype) { const d = this.resolveType(s.vtype, new Set(), this.curm); if (s.hasExpr && !this.assignable(t, d)) this.err(this.lineOf(s.expr), "'" + s.name + "': cannot assign '" + tStr(t) + "' to declared '" + tStr(d) + "'"); t = d; } env[env.length - 1].set(s.name, bind(t, s.nameLine, s.nameCol)); break; }
+      case "VAR": { let t = s.hasExpr ? this.infer(s.expr!, env) : tAny(); if (s.vtype) { const d = this.resolveType(s.vtype, new Set(), this.curm); if (s.hasExpr && !this.assignable(t, d)) this.err(this.lineOf(s.expr), "'" + s.name + "': cannot assign '" + tStr(t) + "' to declared '" + tStr(d) + "'"); t = d; } env[env.length - 1].set(s.name, bind(t, s.nameLine)); break; }
       case "ASSIGN": { const lt = this.infer(s.target!, env); const rt = this.infer(s.expr!, env); if (!this.assignable(rt, lt)) this.err(this.lineOf(s.expr), "cannot assign '" + tStr(rt) + "' to '" + tStr(lt) + "'"); break; }
       case "EXPR": this.infer(s.expr!, env); break;
       case "RET": { const rt = s.hasExpr ? this.infer(s.expr!, env) : tPrim("Void"); if (!this.assignable(rt, this.curRet)) this.err(s.hasExpr ? this.lineOf(s.expr) : 0, "returning '" + tStr(rt) + "' from a function declared '-> " + tStr(this.curRet) + "'"); break; }
       case "IF": { this.expectBool(s.expr!, env); this.checkStmts(s.body, env); for (const [cond, body] of s.elifs) { this.expectBool(cond, env); this.checkStmts(body, env); } if (s.hasElse) this.checkStmts(s.elseBody, env); break; }
       case "WHILE": { this.expectBool(s.expr!, env); this.loopDepth++; this.checkStmts(s.body, env); this.loopDepth--; break; }
-      case "FOR": { const it = this.infer(s.expr!, env); const el = it.k === "LIST" ? it.elem! : tAny(); if (!(it.k === "LIST" || it.k === "ANY" || it.k === "TVAR")) this.err(this.lineOf(s.expr), "cannot iterate over '" + tStr(it) + "'"); env.push(new Map([[s.name, bind(el, s.nameLine, s.nameCol)]])); this.loopDepth++; this.checkStmts(s.body, env); this.loopDepth--; env.pop(); break; }
+      case "FOR": { const it = this.infer(s.expr!, env); const el = it.k === "LIST" ? it.elem! : tAny(); if (!(it.k === "LIST" || it.k === "ANY" || it.k === "TVAR")) this.err(this.lineOf(s.expr), "cannot iterate over '" + tStr(it) + "'"); env.push(new Map([[s.name, bind(el, s.nameLine)]])); this.loopDepth++; this.checkStmts(s.body, env); this.loopDepth--; env.pop(); break; }
       case "BREAK": case "CONTINUE": if (this.loopDepth === 0) this.err(0, (s.k === "BREAK" ? "'break'" : "'continue'") + " used outside a loop"); break;
       case "RAISE": this.infer(s.expr!, env); break;
-      case "TRY": { this.checkStmts(s.body, env); env.push(new Map([[s.name, bind(tAny(), s.nameLine, s.nameCol)]])); this.checkStmts(s.elseBody, env); env.pop(); break; }
+      case "TRY": { this.checkStmts(s.body, env); env.push(new Map([[s.name, bind(tAny(), s.nameLine)]])); this.checkStmts(s.elseBody, env); env.pop(); break; }
       case "PASS": break;
     }
   }
@@ -503,7 +503,7 @@ export class TypeChecker {
     const env: Env = [this.builtins()]; const sc: Scope = new Map(); const selfArgs: Ty[] = []; for (const gn of cg) selfArgs.push(tVar(gn));
     for (let k = 0; k < f.params.length; k++) {
       if (f.params[k] === "self") sc.set("self", bind(tNamed(cls, 0, selfArgs)));
-      else { const pt = f.ptypes[k] ? this.resolveType(f.ptypes[k], g, this.curm) : tAny(); const pp = k < f.paramPos.length ? f.paramPos[k] : [0, 0]; sc.set(f.params[k], bind(pt, pp[0], pp[1])); }
+      else { const pt = f.ptypes[k] ? this.resolveType(f.ptypes[k], g, this.curm) : tAny(); const pl = k < f.paramLines.length ? f.paramLines[k] : 0; sc.set(f.params[k], bind(pt, pl)); }
     }
     env.push(sc); this.checkStmts(f.body, env);
     this.curClass = pc; this.curRet = pr; this.loopDepth = pl; this.curBounds = pb;
@@ -517,7 +517,7 @@ export class TypeChecker {
     if (C.hasCtor) {
       const pc = this.curClass, pr = this.curRet, pl = this.loopDepth; this.loopDepth = 0; this.curClass = C.name; this.curRet = tPrim("Void");
       const env: Env = [this.builtins()]; const sc: Scope = new Map(); sc.set("self", bind(tNamed(C.name, 0, selfArgs)));
-      for (let k = 0; k < C.ctorParams.length; k++) { const pt = C.ctorPtypes[k] ? this.resolveType(C.ctorPtypes[k], g, this.curm) : tAny(); const pp = k < C.ctorParamPos.length ? C.ctorParamPos[k] : [0, 0]; sc.set(C.ctorParams[k], bind(pt, pp[0], pp[1])); }
+      for (let k = 0; k < C.ctorParams.length; k++) { const pt = C.ctorPtypes[k] ? this.resolveType(C.ctorPtypes[k], g, this.curm) : tAny(); const pl = k < C.ctorParamLines.length ? C.ctorParamLines[k] : 0; sc.set(C.ctorParams[k], bind(pt, pl)); }
       env.push(sc); this.checkStmts(C.ctorBody, env); this.curClass = pc; this.curRet = pr; this.loopDepth = pl;
     }
     this.curBounds = pbc; this.curSelf = pcs;
