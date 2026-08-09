@@ -1,0 +1,16 @@
+{
+  "name": "rosegold",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript port of RoseGold's compiler, verified stage-by-stage against the canonical C++ dump flags (--tokens, --ast, --check, --bytecode).",
+  "scripts": {
+  },
+  "engines": {
+    "node": ">=23.6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
+  }
+}
