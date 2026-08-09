@@ -46,6 +46,9 @@
     <languageMapping
         language="RoseGold"
         serverId="rosegold"/>
+    <semanticTokensColorsProvider
+        serverId="rosegold"
+        class="dev.rosegold.RoseGoldSemanticTokensColorsProvider"/>
     <debugAdapterServer
         id="rosegold-dap"
         name="RoseGold Debugger"
