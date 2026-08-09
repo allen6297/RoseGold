@@ -9,7 +9,7 @@ import type { TyNode, Expr, Stmt, Parsed } from "./ast.ts";
 // docTy — render a type node (port of docTy in doc.hpp).
 function docTy(t: TyNode | null): string {
   if (!t) return "";
-  if (t.isFunc) return "func(" + t.fparams.map(docTy).join(", ") + ") -> " + docTy(t.fret);
+  if (t.isFunc) return "fn(" + t.fparams.map(docTy).join(", ") + ") -> " + docTy(t.fret);
   let s = t.name;
   if (t.args.length) s += "<" + t.args.map(docTy).join(", ") + ">";
   return s;
@@ -64,7 +64,7 @@ export function dumpAst(mod: string, P: Parsed): string {
   let o = "(module " + mod + ")\n";
   for (const g of P.globals) o += adStmt(g) + "\n";
   for (const f of P.funcs) {
-    o += "(func " + f.name + " (params";
+    o += "(fn " + f.name + " (params";
     for (let k = 0; k < f.params.length; k++) {
       const ty = k < f.ptypes.length && f.ptypes[k] ? adTy(f.ptypes[k]) : "Any";
       o += " (" + f.params[k] + " " + ty + ")";

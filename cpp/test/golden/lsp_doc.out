@@ -1,6 +1,6 @@
 [hover add (@param/@return doc)]
 ```rosegold
-add: func(Int, Int) -> Int
+add: fn(Int, Int) -> Int
 ```
 
 ---
@@ -12,7 +12,7 @@ Adds two numbers together.
 ----
 [hover add — from a call site]
 ```rosegold
-add: func(Int, Int) -> Int
+add: fn(Int, Int) -> Int
 ```
 
 ---
@@ -24,7 +24,7 @@ Adds two numbers together.
 ----
 [hover method with a doc]
 ```rosegold
-bump: func() -> Int
+bump: fn() -> Int
 ```
 
 ---

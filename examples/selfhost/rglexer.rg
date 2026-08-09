@@ -13,7 +13,7 @@ module rglexer
 #  diffs the two) — so this is the lexer stage of RoseGold, self-hosted.
 # ---------------------------------------------------------------------
 
-const KEYWORDS = "module import as pub internal private static func var const return pass if elif else while for in break continue try catch raise yield class trait enum init match extends extend uses true false"
+const KEYWORDS = "module import as pub internal private static fn var const return pass if elif else while for in break continue try catch raise yield class struct trait enum init match extends extend uses true false"
 const OPCHARS = "()[]<>=!+-*/%,:."
 
 class Lexer:
@@ -38,23 +38,23 @@ class Lexer:
         self.src = self.strip(source)
         self.n = len(self.src)
 
-    func cur(self) -> String:
+    fn cur(self) -> String:
         if self.pos < self.n:
             return self.src[self.pos]
         return ""
 
-    func at(self, i: Int) -> String:
+    fn at(self, i: Int) -> String:
         if i < self.n:
             return self.src[i]
         return ""
 
-    func isDigit(self, c: String) -> Bool:
+    fn isDigit(self, c: String) -> Bool:
         return c >= "0" && c <= "9"
 
-    func isAlpha(self, c: String) -> Bool:
+    fn isAlpha(self, c: String) -> Bool:
         return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c == "_"
 
-    func isKeyword(self, w: String) -> Bool:
+    fn isKeyword(self, w: String) -> Bool:
         var i = 0
         while i < len(self.kw):
             if self.kw[i] == w:
@@ -62,7 +62,7 @@ class Lexer:
             i = i + 1
         return false
 
-    func isOpChar(self, c: String) -> Bool:
+    fn isOpChar(self, c: String) -> Bool:
         var i = 0
         while i < len(OPCHARS):
             if OPCHARS[i] == c:
@@ -70,23 +70,23 @@ class Lexer:
             i = i + 1
         return false
 
-    func isTwoOp(self, s: String) -> Bool:
+    fn isTwoOp(self, s: String) -> Bool:
         return s == "->" || s == "=>" || s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||"
 
-    func top(self) -> Int:
+    fn top(self) -> Int:
         return self.indents[len(self.indents) - 1]
 
-    func emit(self, kind: String):
+    fn emit(self, kind: String):
         print(kind)
         self.last = kind
 
-    func emitVal(self, kind: String, val: String):
+    fn emitVal(self, kind: String, val: String):
         print(kind + " " + val)
         self.last = kind
 
     # Remove line (`# ...`) and block (`#/ ... /#`) comments, preserving newlines
     # and string contents, so indentation widths still line up. Mirrors the C++ stripComments.
-    func strip(self, raw: String) -> String:
+    fn strip(self, raw: String) -> String:
         var out = ""
         var i = 0
         var m = len(raw)
@@ -129,7 +129,7 @@ class Lexer:
             i = i + 1
         return out
 
-    func run(self):
+    fn run(self):
         while self.pos < self.n:
             # --- offside rule: indentation at the start of a logical line ---
             if self.lineStart && self.paren == 0:
@@ -218,7 +218,7 @@ class Lexer:
             self.emit("DEDENT")
         self.emit("END")
 
-func main():
+fn main():
     var src = readFile("examples/prog.rg")
     var lx = Lexer(src)
     lx.run()

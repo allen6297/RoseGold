@@ -8,10 +8,10 @@ enum class Tk { INT, FLT, STR, IDENT, KW, OP, NEWLINE, INDENT, DEDENT, END };
 struct Token { Tk t; std::string s; int line; int col = 1; };   // col: 1-based
 static const std::vector<std::string> KEYWORDS = {
     "module", "import", "as", "pub", "internal", "private", "static",
-    "func", "var", "const", "return", "pass",
+    "fn", "var", "const", "return", "pass",
     "if", "elif", "else", "while", "for", "in",
     "break", "continue", "try", "catch", "raise", "yield",
-    "class", "trait", "enum", "init", "match", "extends", "extend", "extern", "uses", "signal", "true", "false"};
+    "class", "struct", "trait", "enum", "init", "match", "extends", "extend", "extern", "uses", "signal", "true", "false"};   // `struct` is reserved (not yet implemented)
 static bool isKw(const std::string& s) { for (auto& k : KEYWORDS) if (k == s) return true; return false; }
 struct LexError : std::runtime_error { using std::runtime_error::runtime_error; };
 

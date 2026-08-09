@@ -4,12 +4,12 @@ class Counter:
     var value: Int
     init(start: Int):
         self.value = start
-    func bump(self):
+    fn bump(self):
         self.value = self.value + 1
-    func get(self) -> Int:
+    fn get(self) -> Int:
         return self.value
 
-func main():
+fn main():
     var counts: Map<String, Int> = map()
     set(counts, "a", 1)
     var c = Counter(10)

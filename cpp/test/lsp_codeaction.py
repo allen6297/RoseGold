@@ -12,9 +12,9 @@ DOC = ("module scratch\n"
        "    var v: Int\n"
        "    init(x: Int):\n"
        "        self.v = x\n"
-       "func helper(n: Int) -> Int:\n"
+       "fn helper(n: Int) -> Int:\n"
        "    return n\n"
-       "func main():\n"
+       "fn main():\n"
        "    var r = helpr(3)\n"          # line 8: typo helpr -> helper
        "    var b = Box(5)\n"            # line 9: un-annotated var -> add ': Box'
        "    print(r)\n"

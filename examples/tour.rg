@@ -17,7 +17,7 @@ enum Shape:
 ## The area of a shape, by matching on its variant.
 ## @param s the shape to measure
 ## @return the area
-func area(s: Shape) -> Float:
+fn area(s: Shape) -> Float:
     return match s:
         Circle(r):   3.14159 * r * r
         Rect(w, h):  w * h
@@ -28,21 +28,21 @@ class Box<T>:
     var item: T
     init(x: T):
         self.item = x
-    func get(self) -> T:
+    fn get(self) -> T:
         return self.item
 
 # ---------- traits with a default method ----------
 trait Greeter:
-    func name(self) -> String
+    fn name(self) -> String
     ## Default greeting, reused by every conformer (overridable).
-    func greet(self) -> String:
+    fn greet(self) -> String:
         return "Hello, " + self.name()
 
 class Person uses Greeter:
     var who: String
     init(who: String):
         self.who = who
-    func name(self) -> String:
+    fn name(self) -> String:
         return self.who
 
 # ---------- operator overloading ----------
@@ -52,15 +52,15 @@ class Vec2:
     init(x: Int, y: Int):
         self.x = x
         self.y = y
-    func add(self, o: Vec2) -> Vec2:
+    fn add(self, o: Vec2) -> Vec2:
         return Vec2(self.x + o.x, self.y + o.y)
-    func show(self) -> String:
+    fn show(self) -> String:
         return "(" + str(self.x) + ", " + str(self.y) + ")"
 
 # ---------- signals ----------
 class Clock:
     signal tick(n: Int)
-    func run(self, times: Int):
+    fn run(self, times: Int):
         var i = 0
         while i < times:
             i = i + 1
@@ -68,13 +68,13 @@ class Clock:
 
 # ---------- coroutines ----------
 ## A generator that yields 0, 1, ..., n-1 across resumes.
-func counter(n: Int):
+fn counter(n: Int):
     var i = 0
     while i < n:
         yield i
         i = i + 1
 
-func main():
+fn main():
     print("== enums + match ==")
     print("circle:", area(Circle(2.0)))
     print("rect:  ", area(Rect(3.0, 4.0)))
@@ -91,7 +91,7 @@ func main():
     print("v + w =", sum.show())
 
     print("== closures ==")
-    var sq = func(x: Int) -> Int => x * x
+    var sq = fn(x: Int) -> Int => x * x
     print("sq(9) =", sq(9))
 
     print("== collections ==")
@@ -123,7 +123,7 @@ func main():
 
     print("== signals ==")
     var clk = Clock()
-    clk.tick.connect(func(n: Int) => print("  tick", n))
+    clk.tick.connect(fn(n: Int) => print("  tick", n))
     clk.run(3)
 
     print("== vectors ==")

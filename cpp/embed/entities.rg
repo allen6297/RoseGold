@@ -9,5 +9,5 @@ class Mover:
     init(node, speed: Float):
         self.node = node
         self.speed = speed
-    func update(self, dt: Float):
+    fn update(self, dt: Float):
         node_move(self.node, self.speed * dt, 0.0)

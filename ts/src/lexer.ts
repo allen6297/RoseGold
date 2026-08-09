@@ -22,12 +22,23 @@ export interface Token {
 export class LexError extends Error {}
 
 const KEYWORDS = new Set([
-  "module", "import", "as", "pub", "internal", "private", "static",
-  "func", "var", "const", "return", "pass",
-  "if", "elif", "else", "while", "for", "in",
+  // top level
+  "module", "import",
+  // declarations
+  "var", "const", "signal", "enum",
+  // visibility
+  "pub", "internal", "private", "static",
+  // callables / types  (`struct` is reserved — not yet implemented)
+  "fn", "class", "struct", "trait", "extern",
+  // control flow
+  "while", "for", "in", "match",
+  "if", "elif", "else",
   "break", "continue", "try", "catch", "raise", "yield",
-  "class", "trait", "enum", "init", "match", "extends", "extend",
-  "extern", "uses", "signal", "true", "false",
+  "return", "pass", "init",
+  // conformance
+  "uses", "extend", "extends",
+  // helpers
+  "as", "true", "false",
 ]);
 
 // ASCII classifiers matching C++ std::isdigit/isalpha/isalnum on ASCII source

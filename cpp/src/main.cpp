@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
         for (auto& m : order) if (globalsFunc.count(m)) execTop(prog, globals, globalsFunc[m]);
         for (auto& m : order) if (initFunc.count(m)) execTop(prog, globals, initFunc[m]);   // load-time init blocks, dependencies first
         auto mainSym = prog.syms[entryName].find("main");
-        if (mainSym == prog.syms[entryName].end()) throw VMError("entry module '" + entryName + "' has no func main()");
+        if (mainSym == prog.syms[entryName].end()) throw VMError("entry module '" + entryName + "' has no fn main()");
         execTop(prog, globals, mainSym->second.index);
     } catch (const std::exception& e) { std::cerr << "error: " << e.what() << "\n"; return 1; }
     return 0;

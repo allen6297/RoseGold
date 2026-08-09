@@ -7,5 +7,5 @@ init:
     ready = true
     print("loader: init ran")
 
-pub func status() -> Bool:
+pub fn status() -> Bool:
     return ready

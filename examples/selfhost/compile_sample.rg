@@ -5,12 +5,12 @@ module compile_sample
 # functions + the print builtin). `rgcompiler.rg` compiles this to the same
 # bytecode `rosegoldc --bytecode` prints. It also runs, so it's golden-tested.
 
-func bigger(a: Int, b: Int) -> Int:
+fn bigger(a: Int, b: Int) -> Int:
     if a < b:
         return b
     return a
 
-func sumTo(n: Int) -> Int:
+fn sumTo(n: Int) -> Int:
     var total = 0
     var i = 1
     while i <= n:
@@ -18,6 +18,6 @@ func sumTo(n: Int) -> Int:
         i = i + 1
     return total
 
-func main():
+fn main():
     print(bigger(3, 7))
     print(sumTo(5))

@@ -44,13 +44,13 @@ for x in sorted(d, key=lambda z: z["range"]["start"]["line"]):
     print(f"   line {x['range']['start']['line']+1}: {x['message']}")
 
 # didChange -> fix the file to a clean program; expect 0 diagnostics
-clean = "module typeerrors\n\nfunc main():\n    print(\"ok\")\n"
+clean = "module typeerrors\n\nfn main():\n    print(\"ok\")\n"
 send({"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":URI,"version":2},"contentChanges":[{"text":clean}]}})
 d2 = next_diag()
 print(f"[didChange -> clean] {len(d2)} diagnostics")
 
 # didChange -> parse error; expect >=1 diagnostic from the lexer/parser
-broken = "module typeerrors\n\nfunc main(:\n    print(\"x\")\n"
+broken = "module typeerrors\n\nfn main(:\n    print(\"x\")\n"
 send({"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":URI,"version":3},"contentChanges":[{"text":broken}]}})
 d3 = next_diag()
 print(f"[didChange -> parse error] {len(d3)} diagnostics:")

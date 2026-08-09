@@ -11,7 +11,7 @@ module rgcompiler
   RoseGold, self-hosted.
 /#
 
-const KEYWORDS = "module import as pub internal private static func var const return pass if elif else while for in break continue try catch raise yield class trait enum init match extends extend extern uses signal true false"
+const KEYWORDS = "module import as pub internal private static fn var const return pass if elif else while for in break continue try catch raise yield class struct trait enum init match extends extend extern uses signal true false"
 const BINAMES = "print len range push pop str ord chr substr split int readFile writeFile map set get has keys remove sqrt sin cos tan atan2 floor ceil round pow abs min max lerp clamp random randint srandom coroutine resume done vec2 vec3 dot vlen norm __emit"
 
 class Tok:
@@ -46,38 +46,38 @@ class Lexer:
         self.src = self.strip(source)
         self.n = len(self.src)
 
-    func cur(self) -> String:
+    fn cur(self) -> String:
         if self.pos < self.n:
             return self.src[self.pos]
         return ""
-    func at(self, i: Int) -> String:
+    fn at(self, i: Int) -> String:
         if i < self.n:
             return self.src[i]
         return ""
-    func isDigit(self, c: String) -> Bool:
+    fn isDigit(self, c: String) -> Bool:
         return c >= "0" && c <= "9"
-    func isAlpha(self, c: String) -> Bool:
+    fn isAlpha(self, c: String) -> Bool:
         return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c == "_"
-    func isKeyword(self, w: String) -> Bool:
+    fn isKeyword(self, w: String) -> Bool:
         var i = 0
         while i < len(self.kw):
             if self.kw[i] == w:
                 return true
             i = i + 1
         return false
-    func isTwoOp(self, s: String) -> Bool:
+    fn isTwoOp(self, s: String) -> Bool:
         return s == "->" || s == "=>" || s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||"
-    func top(self) -> Int:
+    fn top(self) -> Int:
         return self.indents[len(self.indents) - 1]
 
-    func emit(self, kind: String):
+    fn emit(self, kind: String):
         push(self.toks, Tok(kind, ""))
         self.last = kind
-    func emitVal(self, kind: String, val: String):
+    fn emitVal(self, kind: String, val: String):
         push(self.toks, Tok(kind, val))
         self.last = kind
 
-    func strip(self, raw: String) -> String:
+    fn strip(self, raw: String) -> String:
         var out = ""
         var i = 0
         var m = len(raw)
@@ -120,7 +120,7 @@ class Lexer:
             i = i + 1
         return out
 
-    func run(self):
+    fn run(self):
         while self.pos < self.n:
             if self.lineStart && self.paren == 0:
                 var width = 0
@@ -232,30 +232,30 @@ class Parser:
         self.pos = 0
         self.funcs = []
 
-    func kind(self) -> String:
+    fn kind(self) -> String:
         return self.toks[self.pos].kind
-    func isKind(self, k: String) -> Bool:
+    fn isKind(self, k: String) -> Bool:
         return self.toks[self.pos].kind == k
-    func isKw(self, w: String) -> Bool:
+    fn isKw(self, w: String) -> Bool:
         return self.toks[self.pos].kind == "KW" && self.toks[self.pos].val == w
-    func isOp(self, o: String) -> Bool:
+    fn isOp(self, o: String) -> Bool:
         return self.toks[self.pos].kind == "OP" && self.toks[self.pos].val == o
-    func next(self) -> Tok:
+    fn next(self) -> Tok:
         var t = self.toks[self.pos]
         self.pos = self.pos + 1
         return t
-    func eatOp(self, o: String):
+    fn eatOp(self, o: String):
         self.pos = self.pos + 1
-    func skipNL(self):
+    fn skipNL(self):
         while self.isKind("NEWLINE"):
             self.pos = self.pos + 1
-    func parseVis(self):
+    fn parseVis(self):
         while self.isKw("pub") || self.isKw("internal") || self.isKw("private") || self.isKw("static"):
             self.pos = self.pos + 1
 
-    func skipType(self):
-        # consume a type (Name, Name<...>, or func(...) -> T) — the compiler ignores types
-        if self.isKw("func"):
+    fn skipType(self):
+        # consume a type (Name, Name<...>, or fn(...) -> T) — the compiler ignores types
+        if self.isKw("fn"):
             self.pos = self.pos + 1
             self.eatOp("(")
             if !self.isOp(")"):
@@ -277,51 +277,51 @@ class Parser:
             self.eatOp(">")
 
     # ---- expressions ----
-    func expr(self) -> Node:
+    fn expr(self) -> Node:
         return self.orE()
-    func bin(self, left: Node, op: String, right: Node) -> Node:
+    fn bin(self, left: Node, op: String, right: Node) -> Node:
         var nd = Node("binop")
         nd.sval = op
         push(nd.kids, left)
         push(nd.kids, right)
         return nd
-    func orE(self) -> Node:
+    fn orE(self) -> Node:
         var left = self.andE()
         while self.isOp("||"):
             var op = self.next().val
             left = self.bin(left, op, self.andE())
         return left
-    func andE(self) -> Node:
+    fn andE(self) -> Node:
         var left = self.eqE()
         while self.isOp("&&"):
             var op = self.next().val
             left = self.bin(left, op, self.eqE())
         return left
-    func eqE(self) -> Node:
+    fn eqE(self) -> Node:
         var left = self.cmpE()
         while self.isOp("==") || self.isOp("!="):
             var op = self.next().val
             left = self.bin(left, op, self.cmpE())
         return left
-    func cmpE(self) -> Node:
+    fn cmpE(self) -> Node:
         var left = self.addE()
         while self.isOp("<") || self.isOp("<=") || self.isOp(">") || self.isOp(">="):
             var op = self.next().val
             left = self.bin(left, op, self.addE())
         return left
-    func addE(self) -> Node:
+    fn addE(self) -> Node:
         var left = self.mulE()
         while self.isOp("+") || self.isOp("-"):
             var op = self.next().val
             left = self.bin(left, op, self.mulE())
         return left
-    func mulE(self) -> Node:
+    fn mulE(self) -> Node:
         var left = self.unaryE()
         while self.isOp("*") || self.isOp("/") || self.isOp("%"):
             var op = self.next().val
             left = self.bin(left, op, self.unaryE())
         return left
-    func unaryE(self) -> Node:
+    fn unaryE(self) -> Node:
         if self.isOp("!") || self.isOp("-"):
             var op = self.next().val
             var nd = Node("unary")
@@ -329,7 +329,7 @@ class Parser:
             push(nd.kids, self.unaryE())
             return nd
         return self.postfixE()
-    func postfixE(self) -> Node:
+    fn postfixE(self) -> Node:
         var e = self.primary()
         var go = true
         while go:
@@ -360,7 +360,7 @@ class Parser:
             else:
                 go = false
         return e
-    func primary(self) -> Node:
+    fn primary(self) -> Node:
         var k = self.kind()
         if k == "INT":
             self.pos = self.pos + 1
@@ -398,7 +398,7 @@ class Parser:
         return Node("bad")
 
     # ---- statements ----
-    func suite(self) -> Node:
+    fn suite(self) -> Node:
         self.eatOp(":")
         self.skipNL()
         if self.isKind("INDENT"):
@@ -411,7 +411,7 @@ class Parser:
         if self.isKind("DEDENT"):
             self.pos = self.pos + 1
         return block
-    func stmt(self) -> Node:
+    fn stmt(self) -> Node:
         if self.isKw("if"):
             return self.ifStmt()
         if self.isKw("while"):
@@ -447,7 +447,7 @@ class Parser:
         var ex = Node("expr")
         push(ex.kids, e)
         return ex
-    func varStmt(self) -> Node:
+    fn varStmt(self) -> Node:
         self.pos = self.pos + 1
         var nd = Node("var")
         nd.sval = self.next().val
@@ -458,7 +458,7 @@ class Parser:
             self.pos = self.pos + 1
             push(nd.kids, self.expr())
         return nd
-    func ifStmt(self) -> Node:
+    fn ifStmt(self) -> Node:
         self.pos = self.pos + 1
         var nd = Node("if")
         push(nd.kids, self.expr())
@@ -472,7 +472,7 @@ class Parser:
             push(nd.kids, self.suite())
         return nd
 
-    func funcDecl(self):
+    fn funcDecl(self):
         self.pos = self.pos + 1
         var f = FuncDef(self.next().val)
         self.eatOp("(")
@@ -494,7 +494,7 @@ class Parser:
         f.body = self.suite()
         push(self.funcs, f)
 
-    func parse(self):
+    fn parse(self):
         self.skipNL()
         if self.isKw("module"):
             self.pos = self.pos + 1
@@ -505,7 +505,7 @@ class Parser:
             if self.isKind("END"):
                 return
             self.parseVis()
-            if self.isKw("func"):
+            if self.isKw("fn"):
                 self.funcDecl()
             else:
                 self.pos = self.pos + 1
@@ -531,7 +531,7 @@ class Loop:
 class Compiler:
     var funcs: List<FuncDef>
     var binames: List<String>
-    var funcIdx          # Map name -> func index
+    var funcIdx          # Map name -> fn index
     var nconst: Int
     var out: String
     var code: List<Ins>
@@ -549,30 +549,30 @@ class Compiler:
         self.nextSlot = 0
         self.loops = []
 
-    func builtinId(self, name: String) -> Int:
+    fn builtinId(self, name: String) -> Int:
         var i = 0
         while i < len(self.binames):
             if self.binames[i] == name:
                 return i
             i = i + 1
         return -1
-    func emit(self, op: String, a: Int, b: Int) -> Int:
+    fn emit(self, op: String, a: Int, b: Int) -> Int:
         push(self.code, Ins(op, a, b))
         return len(self.code) - 1
-    func addConst(self) -> Int:
+    fn addConst(self) -> Int:
         var c = self.nconst
         self.nconst = self.nconst + 1
         return c
-    func here(self) -> Int:
+    fn here(self) -> Int:
         return len(self.code)
-    func patch(self, at: Int, target: Int):
+    fn patch(self, at: Int, target: Int):
         self.code[at].a = target
-    func declare(self, name: String) -> Int:
+    fn declare(self, name: String) -> Int:
         var s = self.nextSlot
         set(self.locals, name, s)
         self.nextSlot = self.nextSlot + 1
         return s
-    func opName(self, op: String) -> String:
+    fn opName(self, op: String) -> String:
         if op == "+":
             return "ADD"
         if op == "-":
@@ -595,13 +595,13 @@ class Compiler:
             return "EQ"
         return "NE"
 
-    func compileArgs(self, e: Node):
+    fn compileArgs(self, e: Node):
         var i = 1
         while i < len(e.kids):
             self.compileExpr(e.kids[i])
             i = i + 1
 
-    func compileExpr(self, e: Node):
+    fn compileExpr(self, e: Node):
         var k = e.kind
         if k == "int" || k == "flt" || k == "str" || k == "bool":
             var idx = self.emit("CONST", self.addConst(), 0)
@@ -631,7 +631,7 @@ class Compiler:
                 i = i + 1
             var ml = self.emit("MAKELIST", len(e.kids), 0)
 
-    func compileBinary(self, e: Node):
+    fn compileBinary(self, e: Node):
         var op = e.sval
         if op == "&&":
             self.compileExpr(e.kids[0])
@@ -654,7 +654,7 @@ class Compiler:
             self.compileExpr(e.kids[1])
             var b = self.emit(self.opName(op), 0, 0)
 
-    func compileCall(self, e: Node):
+    fn compileCall(self, e: Node):
         var callee = e.kids[0]
         var argc = len(e.kids) - 1
         if callee.kind == "name":
@@ -676,13 +676,13 @@ class Compiler:
             self.compileArgs(e)
             var cv2 = self.emit("CALLV", argc, 0)
 
-    func compileBlock(self, block: Node):
+    fn compileBlock(self, block: Node):
         var i = 0
         while i < len(block.kids):
             self.compileStmt(block.kids[i])
             i = i + 1
 
-    func compileStmt(self, s: Node):
+    fn compileStmt(self, s: Node):
         var k = s.kind
         if k == "var":
             if len(s.kids) > 0:
@@ -721,7 +721,7 @@ class Compiler:
             var jc = self.emit("JUMP", 0, 0)
             push(self.loops[len(self.loops) - 1].continues, jc)
 
-    func compileIf(self, s: Node):
+    fn compileIf(self, s: Node):
         self.compileExpr(s.kids[0])
         var jf = self.emit("JFALSE", 0, 0)
         self.compileBlock(s.kids[1])
@@ -743,7 +743,7 @@ class Compiler:
             self.patch(ends[e], self.here())
             e = e + 1
 
-    func compileWhile(self, s: Node):
+    fn compileWhile(self, s: Node):
         var condPos = self.here()
         self.compileExpr(s.kids[0])
         var jf = self.emit("JFALSE", 0, 0)
@@ -763,7 +763,7 @@ class Compiler:
             c = c + 1
         pop(self.loops)
 
-    func compileFunc(self, f: FuncDef):
+    fn compileFunc(self, f: FuncDef):
         self.code = []
         self.locals = map()
         self.nextSlot = 0
@@ -775,14 +775,14 @@ class Compiler:
         self.compileBlock(f.body)
         var pn = self.emit("PUSHNIL", 0, 0)
         var r = self.emit("RET", 0, 0)
-        self.out = self.out + "func " + f.name + " nlocals=" + str(self.nextSlot) + "\n"
+        self.out = self.out + "fn " + f.name + " nlocals=" + str(self.nextSlot) + "\n"
         var j = 0
         while j < len(self.code):
             var ins = self.code[j]
             self.out = self.out + "  " + str(j) + ": " + ins.op + " " + str(ins.a) + " " + str(ins.b) + "\n"
             j = j + 1
 
-    func compile(self):
+    fn compile(self):
         var i = 0
         while i < len(self.funcs):
             set(self.funcIdx, self.funcs[i].name, i)
@@ -792,7 +792,7 @@ class Compiler:
             self.compileFunc(self.funcs[j])
             j = j + 1
 
-func main():
+fn main():
     var src = readFile("examples/selfhost/compile_sample.rg")
     var lx = Lexer(src)
     lx.run()

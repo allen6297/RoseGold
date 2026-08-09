@@ -3,8 +3,8 @@ module counter
 # Module-global state that survives a hot reload.
 var count = 0
 
-func tick():
+fn tick():
     count = count + 1
 
-func show():
+fn show():
     print("counter =", count)

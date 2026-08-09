@@ -11,7 +11,7 @@ module documented
 ## @param a the first addend
 ## @param b the second addend
 ## @return their sum
-func add(a: Int, b: Int) -> Int:
+fn add(a: Int, b: Int) -> Int:
     return a + b
 
 #/
@@ -30,12 +30,12 @@ class Counter:
 
     ## Increment the counter, clamping at `cap`.
     ## @return the new count
-    func bump(self) -> Int:
+    fn bump(self) -> Int:
         if self.count < self.cap:
             self.count = self.count + 1
         return self.count
 
-func main():
+fn main():
     print(add(2, 3))
     var c = Counter(0, 2)
     print(c.bump())

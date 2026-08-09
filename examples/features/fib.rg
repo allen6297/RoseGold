@@ -1,11 +1,11 @@
 module demo
 
-func fib(n: Int) -> Int:
+fn fib(n: Int) -> Int:
     if n < 2:
         return n
     return fib(n - 1) + fib(n - 2)
 
-func main():
+fn main():
     var total = 0
     var i = 0
     while i < 10:

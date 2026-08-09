@@ -5,10 +5,10 @@ class Box:
     init(s: Int):
         self.secret = s
 
-func need(n: Int) -> Int:
+fn need(n: Int) -> Int:
     return n
 
-func main():
+fn main():
     var a: Int = "hello"        # (1) String not assignable to Int
     var b = need(true)          # (2) Bool arg where Int expected
     if 42:                      # (3) condition must be Bool

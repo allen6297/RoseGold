@@ -3,7 +3,7 @@
 ---- newText ----
 module scratch
 
-func main():
+fn main():
     var x = 1
     if x < 2:
         print("small")

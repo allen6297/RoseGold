@@ -7,7 +7,7 @@ module coroutine
 # ---------------------------------------------------------------------
 
 # A generator: produces a sequence of values, one per resume().
-func fib_gen(n: Int):
+fn fib_gen(n: Int):
     var a = 0
     var b = 1
     var i = 0
@@ -20,7 +20,7 @@ func fib_gen(n: Int):
 
 # A "wait N frames" helper. Because a yield inside a called function suspends
 # the WHOLE coroutine, wait() composes: a routine can `wait(...)` between steps.
-func wait(frames: Int):
+fn wait(frames: Int):
     var i = 0
     while i < frames:
         yield 0
@@ -28,14 +28,14 @@ func wait(frames: Int):
 
 # A scripted behavior (think: an NPC routine or a cutscene) that unfolds over
 # many frames. It keeps its position automatically across the waits.
-func routine():
+fn routine():
     print("  spawn")
     wait(2)
     print("  attack")
     wait(1)
     print("  retreat")
 
-func main():
+fn main():
     print("fib via generator:")
     var g = coroutine(fib_gen, 8)          # args after the function are passed to it
     var out: List<Int> = []

@@ -3,5 +3,5 @@ module app
 import math
 import graphics.geometry as geo
 
-func main():
+fn main():
     pass

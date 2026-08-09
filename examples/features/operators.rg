@@ -1,7 +1,7 @@
 module operators
 
 trait Ordered:
-    func compareTo(self, other: Self) -> Int
+    fn compareTo(self, other: Self) -> Int
 
 # Operator overloading is convention-based: `+ - * / %` dispatch to add/sub/mul/
 # div/mod, `< <= > >=` to compareTo, and `== !=` to equals -- on any user type
@@ -12,22 +12,22 @@ class Vec2 uses Ordered:
     init(x: Int, y: Int):
         self.x = x
         self.y = y
-    func mag(self) -> Int:
+    fn mag(self) -> Int:
         return self.x + self.y
-    func add(self, other: Vec2) -> Vec2:
+    fn add(self, other: Vec2) -> Vec2:
         return Vec2(self.x + other.x, self.y + other.y)
-    func compareTo(self, other: Vec2) -> Int:
+    fn compareTo(self, other: Vec2) -> Int:
         return self.mag() - other.mag()
-    func equals(self, other: Vec2) -> Bool:
+    fn equals(self, other: Vec2) -> Bool:
         return self.x == other.x && self.y == other.y
 
 # `a < b` on a bounded generic now works too: it desugars to a.compareTo(b) < 0.
-func smaller<T: Ordered>(a: T, b: T) -> T:
+fn smaller<T: Ordered>(a: T, b: T) -> T:
     if a < b:
         return a
     return b
 
-func main():
+fn main():
     var u = Vec2(1, 2)
     var v = Vec2(3, 4)
     var s = u + v                        # -> u.add(v)

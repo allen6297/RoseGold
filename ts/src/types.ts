@@ -41,7 +41,7 @@ export function tStr(t: Ty | null): string {
     case "MODULE": return "module " + t.name;
     case "LIST": return "List<" + tStr(t.elem) + ">";
     case "MAP": return "Map<" + tStr(t.args[0]) + ", " + tStr(t.args[1]) + ">";
-    case "FUNC": { let s = "func("; for (let i = 0; i < t.args.length; i++) { if (i) s += ", "; s += tStr(t.args[i]); } return s + ") -> " + tStr(t.ret); }
+    case "FUNC": { let s = "fn("; for (let i = 0; i < t.args.length; i++) { if (i) s += ", "; s += tStr(t.args[i]); } return s + ") -> " + tStr(t.ret); }
     case "NAMED": { if (!t.args.length) return t.name; let s = t.name + "<"; for (let i = 0; i < t.args.length; i++) { if (i) s += ", "; s += tStr(t.args[i]); } return s + ">"; }
   }
   return "?";

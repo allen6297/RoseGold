@@ -41,9 +41,15 @@ def golden(test_id, actual):
                                             "golden", "actual", n=1))
         fails.append(f"{test_id}: differs from golden\n" + "".join("      " + l for l in diff.splitlines(True)))
 
-def run(args, cwd=ROOT):
-    r = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
-    return r.returncode, r.stdout + r.stderr
+def run(args, cwd=ROOT, timeout=120):
+    # A hard timeout so a hung child (e.g. an LSP/DAP driver waiting on a reply
+    # that never comes) fails loudly instead of blocking the whole suite forever.
+    try:
+        r = subprocess.run(args, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+        return r.returncode, r.stdout + r.stderr
+    except subprocess.TimeoutExpired as e:
+        out = (e.stdout or "") + (e.stderr or "")
+        return 124, out + f"\n[timed out after {timeout}s: {' '.join(args)}]"
 
 def build():
     print(f"• building rosegoldc ({CXX})")
@@ -65,7 +71,7 @@ def test_examples():
         code, out = run([BIN, rel])
         if code == 0:
             golden(f"ex_{name}.out", out)
-        elif "no func main" in out or "cannot open module file" in out:
+        elif "no fn main" in out or "cannot open module file" in out:
             skipped.append(f"{name} (module fixture / library)")   # imported, not run standalone
         else:
             fails.append(f"ex/{name}: unexpected failure\n      " + out.splitlines()[0] if out else name)

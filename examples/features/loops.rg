@@ -1,7 +1,7 @@
 module loops
 
 # break, continue, and list indexing (a[i])
-func main():
+fn main():
     var nums = [10, 20, 30, 40, 50]
     var total = 0
     var i = 0

@@ -9,10 +9,10 @@ var x = 0.0
 var vx = 0.0
 var announced = false
 
-func ready():
+fn ready():
     engine_log("behavior ready")
 
-func update(dt: Float):
+fn update(dt: Float):
     var axis = input_axis()               # ask the engine for input
     vx = vx + axis * 20.0 * dt            # accelerate
     vx = vx * 0.9                         # friction

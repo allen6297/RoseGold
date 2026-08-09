@@ -6,12 +6,12 @@ enum Shape:
     Circle(radius: Float)
     Rect(width: Float, height: Float)
 
-func area(s: Shape) -> Float:
+fn area(s: Shape) -> Float:
     return match s:
         Circle(r):   3.14159 * r * r
         Rect(w, h):  w * h
 
-func fib(n: Int) -> Int:
+fn fib(n: Int) -> Int:
     if n < 2:
         return n
     return fib(n - 1) + fib(n - 2)
@@ -20,12 +20,12 @@ class Counter:
     var value: Int
     init(start: Int):
         self.value = start
-    func bump(self):
+    fn bump(self):
         self.value = self.value + 1
 
-func main():
+fn main():
     # closures + higher-order
-    var square = func(x: Int) -> Int => x * x
+    var square = fn(x: Int) -> Int => x * x
     print("square(9)      =", square(9))
 
     # cross-module call

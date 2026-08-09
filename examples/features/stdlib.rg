@@ -1,7 +1,7 @@
 module stdlib
 
 # Exercises the new standard-library builtins in one program.
-func main():
+fn main():
     # growable lists
     var xs = [10]
     push(xs, 20)

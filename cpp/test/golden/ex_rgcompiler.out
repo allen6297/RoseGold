@@ -1,4 +1,4 @@
-func bigger nlocals=2
+fn bigger nlocals=2
   0: LOAD 0 0
   1: LOAD 1 0
   2: LT 0 0
@@ -10,7 +10,7 @@ func bigger nlocals=2
   8: RET 0 0
   9: PUSHNIL 0 0
   10: RET 0 0
-func sumTo nlocals=3
+fn sumTo nlocals=3
   0: CONST 0 0
   1: STORE 1 0
   2: CONST 1 0
@@ -32,7 +32,7 @@ func sumTo nlocals=3
   18: RET 0 0
   19: PUSHNIL 0 0
   20: RET 0 0
-func main nlocals=0
+fn main nlocals=0
   0: CONST 3 0
   1: CONST 4 0
   2: CALL 0 2

@@ -13,7 +13,7 @@ module rgchecker
   checker stage of RoseGold, self-hosted (name resolution + call checking).
 /#
 
-const KEYWORDS = "module import as pub internal private static func var const return pass if elif else while for in break continue try catch raise yield class trait enum init match extends extend extern uses signal true false"
+const KEYWORDS = "module import as pub internal private static fn var const return pass if elif else while for in break continue try catch raise yield class struct trait enum init match extends extend extern uses signal true false"
 const BUILTINS = "print len range push pop str ord chr substr split int readFile writeFile map set get has keys remove"
 
 class Tok:
@@ -52,38 +52,38 @@ class Lexer:
         self.src = self.strip(source)
         self.n = len(self.src)
 
-    func cur(self) -> String:
+    fn cur(self) -> String:
         if self.pos < self.n:
             return self.src[self.pos]
         return ""
-    func at(self, i: Int) -> String:
+    fn at(self, i: Int) -> String:
         if i < self.n:
             return self.src[i]
         return ""
-    func isDigit(self, c: String) -> Bool:
+    fn isDigit(self, c: String) -> Bool:
         return c >= "0" && c <= "9"
-    func isAlpha(self, c: String) -> Bool:
+    fn isAlpha(self, c: String) -> Bool:
         return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c == "_"
-    func isKeyword(self, w: String) -> Bool:
+    fn isKeyword(self, w: String) -> Bool:
         var i = 0
         while i < len(self.kw):
             if self.kw[i] == w:
                 return true
             i = i + 1
         return false
-    func isTwoOp(self, s: String) -> Bool:
+    fn isTwoOp(self, s: String) -> Bool:
         return s == "->" || s == "=>" || s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||"
-    func top(self) -> Int:
+    fn top(self) -> Int:
         return self.indents[len(self.indents) - 1]
 
-    func emit(self, kind: String):
+    fn emit(self, kind: String):
         push(self.toks, Tok(kind, "", self.line))
         self.last = kind
-    func emitVal(self, kind: String, val: String):
+    fn emitVal(self, kind: String, val: String):
         push(self.toks, Tok(kind, val, self.line))
         self.last = kind
 
-    func strip(self, raw: String) -> String:
+    fn strip(self, raw: String) -> String:
         var out = ""
         var i = 0
         var m = len(raw)
@@ -126,7 +126,7 @@ class Lexer:
             i = i + 1
         return out
 
-    func run(self):
+    fn run(self):
         while self.pos < self.n:
             if self.lineStart && self.paren == 0:
                 var width = 0
@@ -250,31 +250,31 @@ class Parser:
         self.modName = "$entry"
         self.funcs = []
 
-    func kind(self) -> String:
+    fn kind(self) -> String:
         return self.toks[self.pos].kind
-    func curLine(self) -> Int:
+    fn curLine(self) -> Int:
         return self.toks[self.pos].line
-    func isKind(self, k: String) -> Bool:
+    fn isKind(self, k: String) -> Bool:
         return self.toks[self.pos].kind == k
-    func isKw(self, w: String) -> Bool:
+    fn isKw(self, w: String) -> Bool:
         return self.toks[self.pos].kind == "KW" && self.toks[self.pos].val == w
-    func isOp(self, o: String) -> Bool:
+    fn isOp(self, o: String) -> Bool:
         return self.toks[self.pos].kind == "OP" && self.toks[self.pos].val == o
-    func next(self) -> Tok:
+    fn next(self) -> Tok:
         var t = self.toks[self.pos]
         self.pos = self.pos + 1
         return t
-    func eatOp(self, o: String):
+    fn eatOp(self, o: String):
         self.pos = self.pos + 1
-    func skipNL(self):
+    fn skipNL(self):
         while self.isKind("NEWLINE"):
             self.pos = self.pos + 1
-    func parseVis(self):
+    fn parseVis(self):
         while self.isKw("pub") || self.isKw("internal") || self.isKw("private") || self.isKw("static"):
             self.pos = self.pos + 1
 
-    func parseType(self) -> String:
-        if self.isKw("func"):
+    fn parseType(self) -> String:
+        if self.isKw("fn"):
             self.pos = self.pos + 1
             self.eatOp("(")
             var ps = ""
@@ -285,7 +285,7 @@ class Parser:
                     ps = ps + ", " + self.parseType()
             self.eatOp(")")
             self.eatOp("->")
-            return "func(" + ps + ") -> " + self.parseType()
+            return "fn(" + ps + ") -> " + self.parseType()
         var name = self.next().val
         if self.isOp("<"):
             self.pos = self.pos + 1
@@ -298,52 +298,52 @@ class Parser:
         return name
 
     # ---- expressions ----
-    func expr(self) -> Node:
+    fn expr(self) -> Node:
         return self.orE()
-    func binLevel(self, left: Node, op: String, right: Node) -> Node:
+    fn binLevel(self, left: Node, op: String, right: Node) -> Node:
         var nd = Node("binop")
         nd.sval = op
         nd.line = left.line
         push(nd.kids, left)
         push(nd.kids, right)
         return nd
-    func orE(self) -> Node:
+    fn orE(self) -> Node:
         var left = self.andE()
         while self.isOp("||"):
             var op = self.next().val
             left = self.binLevel(left, op, self.andE())
         return left
-    func andE(self) -> Node:
+    fn andE(self) -> Node:
         var left = self.eqE()
         while self.isOp("&&"):
             var op = self.next().val
             left = self.binLevel(left, op, self.eqE())
         return left
-    func eqE(self) -> Node:
+    fn eqE(self) -> Node:
         var left = self.cmpE()
         while self.isOp("==") || self.isOp("!="):
             var op = self.next().val
             left = self.binLevel(left, op, self.cmpE())
         return left
-    func cmpE(self) -> Node:
+    fn cmpE(self) -> Node:
         var left = self.addE()
         while self.isOp("<") || self.isOp("<=") || self.isOp(">") || self.isOp(">="):
             var op = self.next().val
             left = self.binLevel(left, op, self.addE())
         return left
-    func addE(self) -> Node:
+    fn addE(self) -> Node:
         var left = self.mulE()
         while self.isOp("+") || self.isOp("-"):
             var op = self.next().val
             left = self.binLevel(left, op, self.mulE())
         return left
-    func mulE(self) -> Node:
+    fn mulE(self) -> Node:
         var left = self.unaryE()
         while self.isOp("*") || self.isOp("/") || self.isOp("%"):
             var op = self.next().val
             left = self.binLevel(left, op, self.unaryE())
         return left
-    func unaryE(self) -> Node:
+    fn unaryE(self) -> Node:
         if self.isOp("!") || self.isOp("-"):
             var ln = self.curLine()
             var op = self.next().val
@@ -353,7 +353,7 @@ class Parser:
             push(nd.kids, self.unaryE())
             return nd
         return self.postfixE()
-    func postfixE(self) -> Node:
+    fn postfixE(self) -> Node:
         var e = self.primary()
         var go = true
         while go:
@@ -388,7 +388,7 @@ class Parser:
             else:
                 go = false
         return e
-    func primary(self) -> Node:
+    fn primary(self) -> Node:
         var k = self.kind()
         if k == "INT":
             var t = self.next()
@@ -439,7 +439,7 @@ class Parser:
         return Node("bad")
 
     # ---- statements ----
-    func suite(self) -> Node:
+    fn suite(self) -> Node:
         self.eatOp(":")
         self.skipNL()
         if self.isKind("INDENT"):
@@ -452,7 +452,7 @@ class Parser:
         if self.isKind("DEDENT"):
             self.pos = self.pos + 1
         return block
-    func stmt(self) -> Node:
+    fn stmt(self) -> Node:
         if self.isKw("if"):
             return self.ifStmt()
         if self.isKw("while"):
@@ -504,7 +504,7 @@ class Parser:
         ex.line = e.line
         push(ex.kids, e)
         return ex
-    func varStmt(self) -> Node:
+    fn varStmt(self) -> Node:
         self.pos = self.pos + 1
         var nd = Node("var")
         var t = self.next()
@@ -517,7 +517,7 @@ class Parser:
             self.pos = self.pos + 1
             push(nd.kids, self.expr())
         return nd
-    func ifStmt(self) -> Node:
+    fn ifStmt(self) -> Node:
         var ln = self.curLine()
         self.pos = self.pos + 1
         var nd = Node("if")
@@ -533,8 +533,8 @@ class Parser:
             push(nd.kids, self.suite())
         return nd
 
-    func funcDecl(self):
-        self.pos = self.pos + 1                 # 'func'
+    fn funcDecl(self):
+        self.pos = self.pos + 1                 # 'fn'
         var f = FuncDef(self.next().val)        # name
         self.eatOp("(")
         if !self.isOp(")"):
@@ -559,7 +559,7 @@ class Parser:
         f.body = self.suite()
         push(self.funcs, f)
 
-    func parse(self):
+    fn parse(self):
         self.skipNL()
         if self.isKw("module"):
             self.pos = self.pos + 1
@@ -570,10 +570,10 @@ class Parser:
             if self.isKind("END"):
                 return
             self.parseVis()
-            if self.isKw("func"):
+            if self.isKw("fn"):
                 self.funcDecl()
             else:
-                self.pos = self.pos + 1        # skip non-func top-level (out of subset)
+                self.pos = self.pos + 1        # skip non-fn top-level (out of subset)
             self.skipNL()
 
 # ------------------------------- Checker (name resolution + call checking) -------------------------------
@@ -592,7 +592,7 @@ class Checker:
         self.errors = []
         self.scopes = []
 
-    func isBuiltin(self, name: String) -> Bool:
+    fn isBuiltin(self, name: String) -> Bool:
         var i = 0
         while i < len(self.builtins):
             if self.builtins[i] == name:
@@ -600,10 +600,10 @@ class Checker:
             i = i + 1
         return false
 
-    func err(self, line: Int, msg: String):
+    fn err(self, line: Int, msg: String):
         push(self.errors, self.modName + ":" + str(line) + ": " + msg)
 
-    func lookup(self, name: String) -> String:
+    fn lookup(self, name: String) -> String:
         var i = len(self.scopes) - 1
         while i >= 0:
             if has(self.scopes[i], name):
@@ -611,10 +611,10 @@ class Checker:
             i = i - 1
         return ""
 
-    func assignable(self, from: String, to: String) -> Bool:
+    fn assignable(self, from: String, to: String) -> Bool:
         return from == to || from == "Any" || to == "Any"
 
-    func infer(self, e: Node) -> String:
+    fn infer(self, e: Node) -> String:
         var k = e.kind
         if k == "int":
             return "Int"
@@ -667,7 +667,7 @@ class Checker:
             return "Any"
         return "Any"
 
-    func inferCall(self, e: Node) -> String:
+    fn inferCall(self, e: Node) -> String:
         var callee = e.kids[0]
         # arguments come first in traversal order
         var args = []
@@ -708,7 +708,7 @@ class Checker:
             c = c + 1
         return "Any"
 
-    func checkBlock(self, block: Node):
+    fn checkBlock(self, block: Node):
         push(self.scopes, map())
         var i = 0
         while i < len(block.kids):
@@ -716,7 +716,7 @@ class Checker:
             i = i + 1
         pop(self.scopes)
 
-    func checkStmt(self, s: Node):
+    fn checkStmt(self, s: Node):
         var k = s.kind
         if k == "var":
             var t = "Any"
@@ -752,7 +752,7 @@ class Checker:
             self.checkBlock(s.kids[1])
             pop(self.scopes)
 
-    func checkFunc(self, f: FuncDef):
+    fn checkFunc(self, f: FuncDef):
         push(self.scopes, map())
         var i = 0
         while i < len(f.params):
@@ -761,7 +761,7 @@ class Checker:
         self.checkBlock(f.body)
         pop(self.scopes)
 
-    func check(self):
+    fn check(self):
         var i = 0
         while i < len(self.funcs):
             set(self.sigs, self.funcs[i].name, self.funcs[i])
@@ -771,7 +771,7 @@ class Checker:
             self.checkFunc(self.funcs[j])
             j = j + 1
 
-    func report(self):
+    fn report(self):
         if len(self.errors) == 0:
             return
         var out = "type errors:"
@@ -781,7 +781,7 @@ class Checker:
             i = i + 1
         print(out)
 
-func main():
+fn main():
     var src = readFile("examples/selfhost/check_sample.rg")
     var lx = Lexer(src)
     lx.run()

@@ -49,7 +49,7 @@ static std::map<int, std::string> collectDocs(const std::string& raw) {
 // Render a parsed type node for docs (e.g. Map<String, Int>, func(Int) -> Bool).
 static std::string docTy(const TyNodeP& t) {
     if (!t) return "";
-    if (t->isFunc) { std::string s = "func("; for (size_t i = 0; i < t->fparams.size(); i++) { if (i) s += ", "; s += docTy(t->fparams[i]); } s += ") -> " + docTy(t->fret); return s; }
+    if (t->isFunc) { std::string s = "fn("; for (size_t i = 0; i < t->fparams.size(); i++) { if (i) s += ", "; s += docTy(t->fparams[i]); } s += ") -> " + docTy(t->fret); return s; }
     std::string s = t->name;
     if (!t->args.empty()) { s += "<"; for (size_t i = 0; i < t->args.size(); i++) { if (i) s += ", "; s += docTy(t->args[i]); } s += ">"; }
     return s;

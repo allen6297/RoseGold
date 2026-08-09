@@ -28,7 +28,7 @@ IDENT Float
 OP )
 NEWLINE
 DEDENT
-KW func
+KW fn
 IDENT area
 OP (
 IDENT s
@@ -70,7 +70,7 @@ IDENT h
 NEWLINE
 DEDENT
 DEDENT
-KW func
+KW fn
 IDENT fib
 OP (
 IDENT n
@@ -135,7 +135,7 @@ OP =
 IDENT start
 NEWLINE
 DEDENT
-KW func
+KW fn
 IDENT bump
 OP (
 IDENT self
@@ -155,7 +155,7 @@ INT 1
 NEWLINE
 DEDENT
 DEDENT
-KW func
+KW fn
 IDENT main
 OP (
 OP )
@@ -165,7 +165,7 @@ INDENT
 KW var
 IDENT square
 OP =
-KW func
+KW fn
 OP (
 IDENT x
 OP :

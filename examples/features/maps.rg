@@ -1,7 +1,7 @@
 module maps
 
 # The Map<K, V> type + its builtins: map / set / get / has / keys / remove.
-func main():
+fn main():
     var m: Map<String, Int> = map()
     set(m, "one", 1)
     set(m, "two", 2)

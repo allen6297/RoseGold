@@ -35,9 +35,10 @@ BoolLit     = "true" | "false" ;
      block doc : "#/" ... "/#"   (every #/ block is a doc; @param/@return)  *)
 
 (* Keywords (reserved): module import as pub internal private static
-   class trait enum extends uses func init var const return pass
+   class struct trait enum extends uses fn init var const return pass
    if elif else while for in match break continue try catch raise
-   true false                                                    *)
+   true false
+   (`struct` is reserved for a future value-type record; not yet implemented) *)
 
 (* ---------- The offside rule (indentation) ----------
 
@@ -99,8 +100,8 @@ Modifiers   = [ Visibility ] , [ "static" ] ;
 
 Type        = NamedType | FuncType ;
 NamedType   = Ident , [ "<" , TypeArgs , ">" ] ;   (* e.g. List<Shape> *)
-FuncType    = "func" , "(" , [ TypeList ] , ")" ,
-              "->" , Type ;                        (* e.g. func(Int) -> Bool *)
+FuncType    = "fn" , "(" , [ TypeList ] , ")" ,
+              "->" , Type ;                        (* e.g. fn(Int) -> Bool *)
 TypeArgs    = Type , { "," , Type } ;
 TypeList    = Type , { "," , Type } ;
 
@@ -177,7 +178,7 @@ FieldPair   = Ident , ":" , Type ;
 (* ---------- Functions ---------- *)
 
 FuncDecl    = Modifiers , FuncSig , Suite ;
-FuncSig     = "func" , Ident , [ GenericParams ] ,
+FuncSig     = "fn" , Ident , [ GenericParams ] ,
               "(" , [ ParamList ] , ")" ,
               [ "->" , Type ] ;                 (* omitted => void *)
 
@@ -256,8 +257,8 @@ ListLit     = "[" , [ Expr , { "," , Expr } , [ "," ] ] , "]" ;
 
 (* A closure is single-expression (arrow), so it composes inside
    call parens where INDENT/DEDENT are suppressed:
-     each(xs, func(x: Int) -> Int => x + 1)                      *)
-ClosureExpr = "func" , "(" , [ ParamList ] , ")" ,
+     each(xs, fn(x: Int) -> Int => x + 1)                      *)
+ClosureExpr = "fn" , "(" , [ ParamList ] , ")" ,
               [ "->" , Type ] , "=>" , Expr ;
 
 

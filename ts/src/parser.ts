@@ -56,7 +56,7 @@ export class Parser {
 
   parseType(): TyNode {
     const t = mkTy();
-    if (this.isKw("func")) {
+    if (this.isKw("fn")) {
       t.isFunc = true; this.i++;
       this.eatOp("(");
       if (!this.isOp(")")) { t.fparams.push(this.parseType()); while (this.isOp(",")) { this.i++; t.fparams.push(this.parseType()); } }
@@ -109,7 +109,7 @@ export class Parser {
   }
 
   func(): Func {
-    this.eatKw("func"); const f = mkFunc(); const nt = this.peek();
+    this.eatKw("fn"); const f = mkFunc(); const nt = this.peek();
     f.name = this.eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col;
     f.generics = this.genericNames(f.bounds);
     const pl = this.params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types;
@@ -119,7 +119,7 @@ export class Parser {
   }
   // trait method / extern: an abstract signature, or a default impl with a `:` body.
   funcSig(): Func {
-    this.eatKw("func"); const f = mkFunc(); f.isSig = true; const nt = this.peek();
+    this.eatKw("fn"); const f = mkFunc(); f.isSig = true; const nt = this.peek();
     f.name = this.eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col;
     f.generics = this.genericNames(f.bounds);
     const pl = this.params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types;
@@ -136,7 +136,7 @@ export class Parser {
     this.beginBlock();
     while (!this.is("DEDENT") && !this.is("END")) {
       const mv = this.parseVis();
-      if (this.isKw("func")) { const m = this.funcSig(); m.vis = mv; Tr.methods.push(m); }
+      if (this.isKw("fn")) { const m = this.funcSig(); m.vis = mv; Tr.methods.push(m); }
       else this.err("expected a trait method signature");
       this.skipNL();
     }
@@ -167,7 +167,7 @@ export class Parser {
         sg.name = this.eatIdent(); sg.nameLine = snt.line; sg.nameCol = snt.col;
         const pl = this.params(); sg.params = pl.names; sg.paramPos = pl.pos; sg.ptypes = pl.types;
         C.signals.push(sg);
-      } else if (this.isKw("func")) {
+      } else if (this.isKw("fn")) {
         const m = this.func(); m.vis = mv; C.methods.push(m);
       } else this.err("expected a class member");
       this.skipNL();
@@ -183,7 +183,7 @@ export class Parser {
     this.beginBlock();
     while (!this.is("DEDENT") && !this.is("END")) {
       this.parseVis();
-      if (this.isKw("func")) X.methods.push(this.func());
+      if (this.isKw("fn")) X.methods.push(this.func());
       else this.err("expected a method in the extension");
       this.skipNL();
     }
@@ -308,7 +308,7 @@ export class Parser {
     this.err("expected a literal");
   }
   closureExpr(): Expr {
-    this.eatKw("func"); const e = mkExpr("CLOSURE"); const pl = this.params(); e.params = pl.names; e.ptypes = pl.types;
+    this.eatKw("fn"); const e = mkExpr("CLOSURE"); const pl = this.params(); e.params = pl.names; e.ptypes = pl.types;
     if (this.isOp("->")) { this.i++; e.retType = this.parseType(); }
     this.eatOp("=>"); e.lhs = this.expr(); return e;
   }
@@ -316,7 +316,7 @@ export class Parser {
     const t = this.peek();
     if (t.kind === "INT" || t.kind === "FLT" || t.kind === "STR" || this.isKw("true") || this.isKw("false")) return this.litExpr();
     if (this.isKw("match")) return this.matchExpr();
-    if (this.isKw("func")) return this.closureExpr();
+    if (this.isKw("fn")) return this.closureExpr();
     if (t.kind === "IDENT") { const e = mkExpr("NAME"); e.line = t.line; e.col = t.col; this.i++; e.sval = t.value; return e; }
     if (this.isOp("(")) { this.i++; const inner = this.expr(); this.eatOp(")"); return inner; }
     if (this.isOp("[")) {
@@ -368,7 +368,7 @@ export class Parser {
       if (this.isKw("pub") && this.peek(1).kind === "KW" && this.peek(1).value === "import") { this.i++; pub = true; }
       if (this.isKw("import")) { p.imports.push(this.importDecl(pub)); this.skipNL(); continue; }
       const tv = this.parseVis();
-      if (this.isKw("func")) { const f = this.func(); f.vis = tv; p.funcs.push(f); }
+      if (this.isKw("fn")) { const f = this.func(); f.vis = tv; p.funcs.push(f); }
       else if (this.isKw("class")) { const c = this.classDecl(); c.vis = tv; p.classes.push(c); }
       else if (this.isKw("trait")) { const t = this.traitDecl(); t.vis = tv; p.traits.push(t); }
       else if (this.isKw("extend")) { p.extensions.push(this.extendDecl()); }

@@ -66,7 +66,7 @@ static std::string toStr(const Value& v) {
         if (!(*p)->vals.empty()) { s += "("; for (size_t i = 0; i < (*p)->vals.size(); i++) { if (i) s += ", "; s += toStr((*p)->vals[i]); } s += ")"; }
         return s;
     }
-    if (std::holds_alternative<std::shared_ptr<Closure>>(v)) return "<func>";
+    if (std::holds_alternative<std::shared_ptr<Closure>>(v)) return "<fn>";
     if (std::holds_alternative<std::shared_ptr<Coro>>(v)) return "<coroutine>";
     if (auto p = std::get_if<std::shared_ptr<Handle>>(&v)) return "<" + (*p)->kind + ">";
     if (auto p = std::get_if<Vec>(&v)) return p->n == 3 ? "(" + fmtDouble(p->x) + ", " + fmtDouble(p->y) + ", " + fmtDouble(p->z) + ")" : "(" + fmtDouble(p->x) + ", " + fmtDouble(p->y) + ")";

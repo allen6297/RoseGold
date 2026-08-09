@@ -1,5 +1,5 @@
 type errors:
-  trait_errors:7: class 'Bad' does not implement 'Drawable.draw' required as 'func() -> String'
-  trait_errors:13: class 'Wrong': method 'draw' is 'func() -> Int' but trait 'Drawable' requires 'func() -> String'
+  trait_errors:7: class 'Bad' does not implement 'Drawable.draw' required as 'fn() -> String'
+  trait_errors:13: class 'Wrong': method 'draw' is 'fn() -> Int' but trait 'Drawable' requires 'fn() -> String'
   trait_errors:31: type 'Plain' does not satisfy bound 'Drawable' on 'T'
   trait_errors:32: argument 1: 'Plain' is not assignable to 'Drawable'

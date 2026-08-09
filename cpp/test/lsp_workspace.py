@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Cross-file (workspace) references + rename: a `pub func` defined in one module,
+# Cross-file (workspace) references + rename: a `pub fn` defined in one module,
 # used in another. Creates a throwaway two-file workspace under /tmp.
 import json, os, subprocess
 
@@ -7,8 +7,8 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 BIN  = os.path.join(ROOT, "cpp", "rosegoldc")
 WS   = "/tmp/rgws_test"
 os.makedirs(WS, exist_ok=True)
-open(WS + "/lib.rg", "w").write("module lib\n\npub func greet(name: String) -> String:\n    return name\n")
-open(WS + "/main.rg", "w").write('module main\n\nimport lib\n\nfunc main():\n    print(lib.greet("a"))\n    print(lib.greet("b"))\n')
+open(WS + "/lib.rg", "w").write("module lib\n\npub fn greet(name: String) -> String:\n    return name\n")
+open(WS + "/main.rg", "w").write('module main\n\nimport lib\n\nfn main():\n    print(lib.greet("a"))\n    print(lib.greet("b"))\n')
 MAIN = WS + "/main.rg"; MURI = "file://" + MAIN
 
 def frame(m): b = json.dumps(m).encode(); return b"Content-Length: %d\r\n\r\n%s" % (len(b), b)

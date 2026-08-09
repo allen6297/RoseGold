@@ -21,7 +21,7 @@ static std::string dumpBytecode(Program& prog) {
     std::string o;
     for (auto& f : prog.funcs) {
         std::string nm = f.name; auto p = nm.find("::"); if (p != std::string::npos) nm = nm.substr(p + 2);
-        o += "func " + nm + " nlocals=" + std::to_string(f.nlocals) + "\n";
+        o += "fn " + nm + " nlocals=" + std::to_string(f.nlocals) + "\n";
         for (size_t i = 0; i < f.code.size(); i++) {
             const Instr& in = f.code[i];
             o += "  " + std::to_string(i) + ": " + N[(int)in.op] + " " + std::to_string(in.a) + " " + std::to_string(in.b) + "\n";

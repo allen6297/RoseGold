@@ -5,5 +5,5 @@ import loader
 init:
     print("appinit: init ran")
 
-func main():
+fn main():
     print("main: loader ready =", loader.status())

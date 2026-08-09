@@ -12,7 +12,7 @@ dependency. The original Python implementation is kept as a reference in
 ```rosegold
 module hello
 
-func main():
+fn main():
     print("hello, RoseGold")
 ```
 
@@ -73,7 +73,7 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 - Comments: `#` line comment. **Doc comments** (Javadoc-style): `## ...` line and `#/ ... /#` block — attach to the next declaration, support `@param`/`@return`, render via `rosegoldc --doc`, and show on hover in the editor
 - Visibility: `pub | internal | private` (default `internal`)
 - `var` / `const` (const must be initialized), with type inference
-- `func name(a: Int) -> Bool:` ; single-expression closures `func(x: Int) => x + 1`
+- `fn name(a: Int) -> Bool:` ; single-expression closures `fn(x: Int) => x + 1`
 - `class` with `extends` (one base) + `uses` (traits), `init(...)` constructors
 - `trait` — abstract method signatures + optional **default bodies** (inherited by conformers, overridable); may use `Self` for the conforming type; a class that `uses` a trait must implement the abstract methods (checked), and a trait is a usable type (dynamic dispatch)
 - `extend Type uses Trait` — **retroactive conformance**: make an existing type (including primitives like `Int`/`String`, `List`/`Map`, or a class) conform to a trait after the fact, so it satisfies `<T: Trait>` bounds; methods dispatch dynamically (`3.lessThan(9)`)
@@ -90,7 +90,7 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 - Game/math stdlib: `sqrt sin cos tan atan2 floor ceil round pow abs min max lerp clamp random randint srandom`
 - Load-time `init:` block per module (runs once, dependencies first); programs start at `main()`
 - Modules: `module a.b`, `import m`, `import m as x`, `import m.(a, b)`, `pub import m`
-- **Native FFI**: `extern func host_add(a: Int, b: Int) -> Int` declares a function the C++ host provides; calls are type-checked against the declaration and bound by name to the host's registry at runtime (Rust-`extern` style)
+- **Native FFI**: `extern fn host_add(a: Int, b: Int) -> Int` declares a function the C++ host provides; calls are type-checked against the declaration and bound by name to the host's registry at runtime (Rust-`extern` style)
 - File extension: `.rg`
 
 ## Tools
@@ -220,7 +220,7 @@ lists**, and a **`Map` type** for symbol tables. What remains is "just" the
 - ✅ debugger — a native **Debug Adapter** (`rosegoldc --dap`, DAP over stdio): line breakpoints, step in/over/out, call stack, and local/global variable inspection with **drill-in** (expand objects into fields, lists/maps into elements, enum variants into payloads) + expression evaluation, driven by a debug hook in the VM (per-instruction line table + per-function local-name table). VS Code launches it via a `rosegold` debug type (F5 on a `.rg` file)
 - ✅ standard library — growable lists, `Map<K,V>`, string ops, file I/O, a math/game stdlib (`sqrt`/`sin`/`lerp`/`clamp`/`random`/…)
 - ✅ coroutines — `yield` + `coroutine`/`resume`/`done` for frame-spanning logic (game scripting); `examples/features/coroutine.rg`, `features/game.rg`
-- ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`). Scripts declare the host's functions with **`extern func`** — type-checked standalone, bound by name at runtime (`cpp/embed/externdemo.cpp` + `externdemo.rg`)
+- ✅ embeddable runtime + native FFI — a C++ host registers native functions scripts can call, loads a script, and ticks its functions each frame with persistent state (`cpp/src/runtime.hpp`; demo engine `cpp/embed/engine.cpp` driving `cpp/embed/behavior.rg`). Scripts declare the host's functions with **`extern fn`** — type-checked standalone, bound by name at runtime (`cpp/embed/externdemo.cpp` + `externdemo.rg`)
 - ✅ game-engine embedding kit — opaque **host handles** (natives hand scripts real engine objects), a **component model** (`newInstance`/`callMethod` — instantiate a script class per entity and tick it; `cpp/embed/game.cpp`), built-in **value-type vectors** (`vec2`/`vec3`, `.x/.y/.z`, `+ - *`, `dot`/`vlen`/`norm`), **hot reload** (`Runtime.reload()` keeps state; `cpp/embed/hotreload.cpp`), and **signals** (a first-class language feature — see below; `examples/features/signals.rg`)
 - ✅ C++ split into modular `cpp/src/` (one header per stage)
 - ✅ self-hosting — the **whole pipeline written in RoseGold**, each stage **byte-identical to the canonical C++ stage**: **lexer** (`rglexer.rg` vs `--tokens`), **parser** (`rgparser.rg` vs `--ast`), **type checker** (`rgchecker.rg` vs `--check`), and **bytecode compiler** (`rgcompiler.rg` vs `--bytecode`) — lex → parse → check → compile, all self-hosted (over a functions-focused subset) and living in `examples/selfhost/`

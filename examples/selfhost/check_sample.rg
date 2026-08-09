@@ -4,13 +4,13 @@ module check_sample
 # checker (rgchecker.rg) reports identically to `rosegoldc --check`: undefined
 # names, call arity, and argument-type mismatches.
 
-func add(a: Int, b: Int) -> Int:
+fn add(a: Int, b: Int) -> Int:
     return a + b
 
-func greet(name: String) -> String:
+fn greet(name: String) -> String:
     return name
 
-func main():
+fn main():
     print(add(1, 2))
     print(add(1))
     print(add(1, "two"))

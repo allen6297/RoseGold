@@ -16,18 +16,18 @@ class Player:
     init(hp: Int):
         self.hp = hp
 
-    func hurt(self, dmg: Int):
+    fn hurt(self, dmg: Int):
         self.hp = self.hp - dmg
         self.onHit.emit(dmg)               # checked: dmg must be Int
         if self.hp <= 0:
             self.onDied.emit()
 
-func main():
+fn main():
     var p = Player(25)
-    p.onHit.connect(func(d: Int) => print("  ui:  -", d, "hp"))
-    p.onHit.connect(func(d: Int) => print("  sfx: play hurt sound"))
-    p.onHit.connect(func() => print("  log: (took a hit)"))   # overflow: no-arg handler on a 1-arg signal
-    p.onDied.connect(func() => print("  *** game over ***"))
+    p.onHit.connect(fn(d: Int) => print("  ui:  -", d, "hp"))
+    p.onHit.connect(fn(d: Int) => print("  sfx: play hurt sound"))
+    p.onHit.connect(fn() => print("  log: (took a hit)"))   # overflow: no-arg handler on a 1-arg signal
+    p.onDied.connect(fn() => print("  *** game over ***"))
 
     print("hurt 10:")
     p.hurt(10)

@@ -9,13 +9,13 @@ WS   = "/tmp/rgmod_test"
 os.makedirs(WS, exist_ok=True)
 open(WS + "/util.rg", "w").write(
     "module util\n\n"
-    "pub func twice(n: Int) -> Int:\n    return n + n\n\n"
-    "pub func shout(s: String) -> String:\n    return s\n\n"
-    "internal func secret() -> Int:\n    return 0\n\n"
+    "pub fn twice(n: Int) -> Int:\n    return n + n\n\n"
+    "pub fn shout(s: String) -> String:\n    return s\n\n"
+    "internal fn secret() -> Int:\n    return 0\n\n"
     "pub enum Color:\n    Red\n    Green\n\n"
     "pub class Box:\n    var v: Int\n    init(v: Int):\n        self.v = v\n"
 )
-open(WS + "/app.rg", "w").write("module app\n\nimport util\n\nfunc main():\n    print(util.twice(21))\n")
+open(WS + "/app.rg", "w").write("module app\n\nimport util\n\nfn main():\n    print(util.twice(21))\n")
 APP = WS + "/app.rg"; URI = "file://" + APP
 
 KIND = {2:"Method",3:"Function",5:"Field",7:"Class",8:"Interface",13:"Enum",20:"EnumMember",6:"Var"}

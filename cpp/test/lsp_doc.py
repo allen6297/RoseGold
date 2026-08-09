@@ -45,16 +45,16 @@ def hover(substr, needle, label):
     print(r["contents"]["value"] if r else "null")
     print("----")
 
-hover("func add", "add", "add (@param/@return doc)")   # a function with a line-doc block
+hover("fn add", "add", "add (@param/@return doc)")   # a function with a line-doc block
 hover("print(add(", "add", "add — from a call site")   # doc shows on a USE, too
-hover("func bump", "bump", "method with a doc")        # a class method
+hover("fn bump", "bump", "method with a doc")        # a class method
 
 # cross-file: a doc on an imported symbol shows when hovering its use in another file
 import tempfile
 xd = os.path.join(tempfile.gettempdir(), "rg_xdoc")
 os.makedirs(xd, exist_ok=True)
-open(os.path.join(xd, "xlib.rg"), "w").write("module xlib\n\n## Squares a number.\npub func square(x: Int) -> Int:\n    return x * x\n")
-xmain = os.path.join(xd, "xmain.rg"); XT = "module xmain\n\nimport xlib\n\nfunc main():\n    print(xlib.square(5))\n"
+open(os.path.join(xd, "xlib.rg"), "w").write("module xlib\n\n## Squares a number.\npub fn square(x: Int) -> Int:\n    return x * x\n")
+xmain = os.path.join(xd, "xmain.rg"); XT = "module xmain\n\nimport xlib\n\nfn main():\n    print(xlib.square(5))\n"
 open(xmain, "w").write(XT)
 xuri = "file://" + xmain
 send({"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":xuri,"languageId":"rosegold","version":1,"text":XT}}})

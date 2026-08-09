@@ -1,19 +1,19 @@
 module features
 
-func sum(xs: List<Int>) -> Int:
+fn sum(xs: List<Int>) -> Int:
     var total = 0
     for x in xs:
         total = total + x
     return total
 
-func checked(n: Int) -> Int:
+fn checked(n: Int) -> Int:
     if n < 0:
         raise "negative input!"
     return n * 2
 
 var greeting = "RoseGold"
 
-func main():
+fn main():
     var xs = [1, 2, 3, 4, 5]
     print("sum       =", sum(xs))
     xs[0] = 100

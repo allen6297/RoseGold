@@ -11,7 +11,7 @@ module rgparser
   parser stage of RoseGold, self-hosted.
 /#
 
-const KEYWORDS = "module import as pub internal private static func var const return pass if elif else while for in break continue try catch raise yield class trait enum init match extends extend extern uses signal true false"
+const KEYWORDS = "module import as pub internal private static fn var const return pass if elif else while for in break continue try catch raise yield class struct trait enum init match extends extend extern uses signal true false"
 const OPCHARS = "()[]<>=!+-*/%,:."
 
 class Tok:
@@ -46,38 +46,38 @@ class Lexer:
         self.src = self.strip(source)
         self.n = len(self.src)
 
-    func cur(self) -> String:
+    fn cur(self) -> String:
         if self.pos < self.n:
             return self.src[self.pos]
         return ""
-    func at(self, i: Int) -> String:
+    fn at(self, i: Int) -> String:
         if i < self.n:
             return self.src[i]
         return ""
-    func isDigit(self, c: String) -> Bool:
+    fn isDigit(self, c: String) -> Bool:
         return c >= "0" && c <= "9"
-    func isAlpha(self, c: String) -> Bool:
+    fn isAlpha(self, c: String) -> Bool:
         return (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c == "_"
-    func isKeyword(self, w: String) -> Bool:
+    fn isKeyword(self, w: String) -> Bool:
         var i = 0
         while i < len(self.kw):
             if self.kw[i] == w:
                 return true
             i = i + 1
         return false
-    func isTwoOp(self, s: String) -> Bool:
+    fn isTwoOp(self, s: String) -> Bool:
         return s == "->" || s == "=>" || s == "==" || s == "!=" || s == "<=" || s == ">=" || s == "&&" || s == "||"
-    func top(self) -> Int:
+    fn top(self) -> Int:
         return self.indents[len(self.indents) - 1]
 
-    func emit(self, kind: String):
+    fn emit(self, kind: String):
         push(self.toks, Tok(kind, ""))
         self.last = kind
-    func emitVal(self, kind: String, val: String):
+    fn emitVal(self, kind: String, val: String):
         push(self.toks, Tok(kind, val))
         self.last = kind
 
-    func strip(self, raw: String) -> String:
+    fn strip(self, raw: String) -> String:
         var out = ""
         var i = 0
         var m = len(raw)
@@ -120,7 +120,7 @@ class Lexer:
             i = i + 1
         return out
 
-    func run(self):
+    fn run(self):
         while self.pos < self.n:
             if self.lineStart && self.paren == 0:
                 var width = 0
@@ -213,38 +213,38 @@ class Parser:
         self.toks = ts
         self.pos = 0
 
-    func kind(self) -> String:
+    fn kind(self) -> String:
         return self.toks[self.pos].kind
-    func val(self) -> String:
+    fn val(self) -> String:
         return self.toks[self.pos].val
-    func isKind(self, k: String) -> Bool:
+    fn isKind(self, k: String) -> Bool:
         return self.toks[self.pos].kind == k
-    func isKw(self, w: String) -> Bool:
+    fn isKw(self, w: String) -> Bool:
         return self.toks[self.pos].kind == "KW" && self.toks[self.pos].val == w
-    func isOp(self, o: String) -> Bool:
+    fn isOp(self, o: String) -> Bool:
         return self.toks[self.pos].kind == "OP" && self.toks[self.pos].val == o
-    func next(self) -> Tok:
+    fn next(self) -> Tok:
         var t = self.toks[self.pos]
         self.pos = self.pos + 1
         return t
-    func eatOp(self, o: String):
+    fn eatOp(self, o: String):
         self.pos = self.pos + 1
-    func skipNL(self):
+    fn skipNL(self):
         while self.isKind("NEWLINE"):
             self.pos = self.pos + 1
-    func parseVis(self):
+    fn parseVis(self):
         while self.isKw("pub") || self.isKw("internal") || self.isKw("private") || self.isKw("static"):
             self.pos = self.pos + 1
 
-    func dotted(self) -> String:
+    fn dotted(self) -> String:
         var s = self.next().val
         while self.isOp(".") && self.toks[self.pos + 1].kind == "IDENT":
             self.pos = self.pos + 1
             s = s + "." + self.next().val
         return s
 
-    func parseType(self) -> String:
-        if self.isKw("func"):
+    fn parseType(self) -> String:
+        if self.isKw("fn"):
             self.pos = self.pos + 1
             self.eatOp("(")
             var ps = ""
@@ -256,7 +256,7 @@ class Parser:
             self.eatOp(")")
             self.eatOp("->")
             var r = self.parseType()
-            return "func(" + ps + ") -> " + r
+            return "fn(" + ps + ") -> " + r
         var name = self.next().val
         if self.isOp("<"):
             self.pos = self.pos + 1
@@ -268,7 +268,7 @@ class Parser:
             return name + "<" + args + ">"
         return name
 
-    func oneParam(self) -> String:
+    fn oneParam(self) -> String:
         var name = self.next().val
         var ty = "Any"
         if self.isOp(":"):
@@ -276,7 +276,7 @@ class Parser:
             ty = self.parseType()
         return " (" + name + " " + ty + ")"
 
-    func paramList(self) -> String:
+    fn paramList(self) -> String:
         self.eatOp("(")
         var out = ""
         if !self.isOp(")"):
@@ -288,7 +288,7 @@ class Parser:
         return out
 
     # blocks: eat ':' NEWLINE INDENT stmts DEDENT ; returns " s1 s2 ..."
-    func suite(self) -> String:
+    fn suite(self) -> String:
         self.eatOp(":")
         self.skipNL()
         if self.isKind("INDENT"):
@@ -303,50 +303,50 @@ class Parser:
         return body
 
     # ---- expressions: precedence ladder mirroring the C++ parser ----
-    func expr(self) -> String:
+    fn expr(self) -> String:
         return self.orE()
-    func orE(self) -> String:
+    fn orE(self) -> String:
         var left = self.andE()
         while self.isOp("||"):
             var op = self.next().val
             left = "(binop " + op + " " + left + " " + self.andE() + ")"
         return left
-    func andE(self) -> String:
+    fn andE(self) -> String:
         var left = self.eqE()
         while self.isOp("&&"):
             var op = self.next().val
             left = "(binop " + op + " " + left + " " + self.eqE() + ")"
         return left
-    func eqE(self) -> String:
+    fn eqE(self) -> String:
         var left = self.cmpE()
         while self.isOp("==") || self.isOp("!="):
             var op = self.next().val
             left = "(binop " + op + " " + left + " " + self.cmpE() + ")"
         return left
-    func cmpE(self) -> String:
+    fn cmpE(self) -> String:
         var left = self.addE()
         while self.isOp("<") || self.isOp("<=") || self.isOp(">") || self.isOp(">="):
             var op = self.next().val
             left = "(binop " + op + " " + left + " " + self.addE() + ")"
         return left
-    func addE(self) -> String:
+    fn addE(self) -> String:
         var left = self.mulE()
         while self.isOp("+") || self.isOp("-"):
             var op = self.next().val
             left = "(binop " + op + " " + left + " " + self.mulE() + ")"
         return left
-    func mulE(self) -> String:
+    fn mulE(self) -> String:
         var left = self.unaryE()
         while self.isOp("*") || self.isOp("/") || self.isOp("%"):
             var op = self.next().val
             left = "(binop " + op + " " + left + " " + self.unaryE() + ")"
         return left
-    func unaryE(self) -> String:
+    fn unaryE(self) -> String:
         if self.isOp("!") || self.isOp("-"):
             var op = self.next().val
             return "(unary " + op + " " + self.unaryE() + ")"
         return self.postfixE()
-    func postfixE(self) -> String:
+    fn postfixE(self) -> String:
         var e = self.primary()
         var go = true
         while go:
@@ -372,7 +372,7 @@ class Parser:
             else:
                 go = false
         return e
-    func primary(self) -> String:
+    fn primary(self) -> String:
         var k = self.kind()
         if k == "INT":
             return "(int " + self.next().val + ")"
@@ -410,7 +410,7 @@ class Parser:
         return "(?)"
 
     # ---- statements ----
-    func stmt(self) -> String:
+    fn stmt(self) -> String:
         if self.isKw("if"):
             return self.ifStmt()
         if self.isKw("while"):
@@ -435,7 +435,7 @@ class Parser:
             self.pos = self.pos + 1
             return "(assign " + e + " " + self.expr() + ")"
         return "(expr " + e + ")"
-    func varStmt(self) -> String:
+    fn varStmt(self) -> String:
         self.pos = self.pos + 1
         var name = self.next().val
         if self.isOp(":"):
@@ -445,12 +445,12 @@ class Parser:
             self.pos = self.pos + 1
             return "(var " + name + " " + self.expr() + ")"
         return "(var " + name + ")"
-    func retStmt(self) -> String:
+    fn retStmt(self) -> String:
         self.pos = self.pos + 1
         if self.isKind("NEWLINE") || self.isKind("DEDENT") || self.isKind("END"):
             return "(return)"
         return "(return " + self.expr() + ")"
-    func ifStmt(self) -> String:
+    fn ifStmt(self) -> String:
         self.pos = self.pos + 1
         var cond = self.expr()
         var s = "(if " + cond + " (then" + self.suite() + ")"
@@ -462,17 +462,17 @@ class Parser:
             self.pos = self.pos + 1
             s = s + " (else" + self.suite() + ")"
         return s + ")"
-    func whileStmt(self) -> String:
+    fn whileStmt(self) -> String:
         self.pos = self.pos + 1
         var cond = self.expr()
         return "(while " + cond + self.suite() + ")"
-    func forStmt(self) -> String:
+    fn forStmt(self) -> String:
         self.pos = self.pos + 1
         var name = self.next().val
         self.pos = self.pos + 1
         var it = self.expr()
         return "(for " + name + " " + it + self.suite() + ")"
-    func funcDecl(self) -> String:
+    fn funcDecl(self) -> String:
         self.pos = self.pos + 1
         var name = self.next().val
         var params = self.paramList()
@@ -480,9 +480,9 @@ class Parser:
         if self.isOp("->"):
             self.pos = self.pos + 1
             ret = self.parseType()
-        return "(func " + name + " (params" + params + ") " + ret + self.suite() + ")"
+        return "(fn " + name + " (params" + params + ") " + ret + self.suite() + ")"
 
-    func program(self) -> String:
+    fn program(self) -> String:
         self.skipNL()
         var modName = "$entry"
         if self.isKw("module"):
@@ -497,7 +497,7 @@ class Parser:
             if self.isKind("END"):
                 return result + globals + funcs
             self.parseVis()
-            if self.isKw("func"):
+            if self.isKw("fn"):
                 funcs = funcs + "\n" + self.funcDecl()
             elif self.isKw("var") || self.isKw("const"):
                 globals = globals + "\n" + self.varStmt()
@@ -506,7 +506,7 @@ class Parser:
             self.skipNL()
         return result + globals + funcs
 
-func main():
+fn main():
     var src = readFile("examples/selfhost/parse_sample.rg")
     var lx = Lexer(src)
     lx.run()

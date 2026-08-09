@@ -8,7 +8,7 @@ BIN  = os.path.join(ROOT, "cpp", "rosegoldc")
 URI  = "file://" + os.path.join(ROOT, "examples", "scratch.rg")
 
 # valid but messy: 2-space + 6-space indents, trailing whitespace, blank runs
-MESSY = 'module scratch\n\n\n\nfunc main():\n  var x = 1   \n  if x < 2:\n      print("small")   \n\n\n  # note\n  print(x)\n'
+MESSY = 'module scratch\n\n\n\nfn main():\n  var x = 1   \n  if x < 2:\n      print("small")   \n\n\n  # note\n  print(x)\n'
 
 def frame(m): b = json.dumps(m).encode(); return b"Content-Length: %d\r\n\r\n%s" % (len(b), b)
 def read(f):

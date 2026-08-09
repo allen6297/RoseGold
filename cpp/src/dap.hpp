@@ -257,7 +257,7 @@ struct Dbg {
             for (auto& m : order) if (globalsFunc.count(m)) execTop(prog, globals, globalsFunc[m]);
             for (auto& m : order) if (initFunc.count(m)) execTop(prog, globals, initFunc[m]);
             auto ms = prog.syms[entryMod].find("main");
-            if (ms == prog.syms[entryMod].end()) throw VMError("entry module '" + entryMod + "' has no func main()");
+            if (ms == prog.syms[entryMod].end()) throw VMError("entry module '" + entryMod + "' has no fn main()");
             execTop(prog, globals, ms->second.index);
         } catch (const std::exception& e) {
             std::cout.rdbuf(realBuf); flushOutput();

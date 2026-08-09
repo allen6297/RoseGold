@@ -19,7 +19,7 @@ import secret
 #  (B) or (C) yet -- that is exactly what §5/§6 would add.
 # ---------------------------------------------------------------------
 
-func probe():
+fn probe():
     var a = secret.shown     # (A) LEGAL    : 'shown' is pub
     var b = secret.hidden    # (B) ILLEGAL  : 'hidden' is internal to 'secret'
     var c = hidden           # (C) ILLEGAL  : bare name, not imported or declared here

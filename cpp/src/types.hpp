@@ -22,7 +22,7 @@ static std::string tStr(const TyP& t) {
         case Ty::ANY: return "?"; case Ty::PRIM: case Ty::TVAR: return t->name; case Ty::MODULE: return "module " + t->name;
         case Ty::LIST: return "List<" + tStr(t->elem) + ">";
         case Ty::MAP: return "Map<" + tStr(t->args[0]) + ", " + tStr(t->args[1]) + ">";
-        case Ty::FUNC: { std::string s = "func("; for (size_t i = 0; i < t->args.size(); i++) { if (i) s += ", "; s += tStr(t->args[i]); } return s + ") -> " + tStr(t->ret); }
+        case Ty::FUNC: { std::string s = "fn("; for (size_t i = 0; i < t->args.size(); i++) { if (i) s += ", "; s += tStr(t->args[i]); } return s + ") -> " + tStr(t->ret); }
         case Ty::NAMED: { if (t->args.empty()) return t->name; std::string s = t->name + "<"; for (size_t i = 0; i < t->args.size(); i++) { if (i) s += ", "; s += tStr(t->args[i]); } return s + ">"; }
     }
     return "?";

@@ -27,7 +27,7 @@ import sys
 
 KEYWORDS = {
     "module", "import", "as", "pub", "internal", "private", "static",
-    "class", "trait", "enum", "extends", "uses", "func", "init",
+    "class", "trait", "enum", "extends", "uses", "fn", "init",
     "var", "const", "return", "pass",
     "if", "elif", "else", "while", "for", "in", "match",
     "break", "continue", "try", "catch", "raise",
@@ -377,7 +377,7 @@ class Parser:
             return self.parse_trait(mods)
         if self.kw("enum"):
             return self.parse_enum(mods)
-        if self.kw("func"):
+        if self.kw("fn"):
             return self.parse_func(mods)
         if self.kw("init"):
             return self.parse_module_init()
@@ -469,7 +469,7 @@ class Parser:
         mods = self.parse_modifiers()
         if self.kw("var") or self.kw("const"):
             return self.parse_field(mods)
-        if self.kw("func"):
+        if self.kw("fn"):
             return self.parse_func(mods)
         if self.kw("init"):
             return self.parse_ctor(mods)
@@ -480,7 +480,7 @@ class Parser:
         self.err("expected a class member")
 
     def parse_func_sig(self):
-        self.eat_kw("func")
+        self.eat_kw("fn")
         name = self.eat_ident()
         generics = self.parse_generic_params() if self.op("<") else []
         self.eat_op("(")
@@ -558,8 +558,8 @@ class Parser:
 
     # -- Types --
     def parse_type(self):
-        if self.kw("func"):
-            self.eat_kw("func")
+        if self.kw("fn"):
+            self.eat_kw("fn")
             self.eat_op("(")
             params = []
             if not self.op(")"):
@@ -672,7 +672,7 @@ class Parser:
         t = self.peek()
         if t.type in ("INT", "FLOAT", "STRING", "IDENT"):
             return True
-        if t.type == "KW" and t.value in ("true", "false", "match", "func"):
+        if t.type == "KW" and t.value in ("true", "false", "match", "fn"):
             return True
         if t.type == "OP" and t.value in ("(", "[", "!", "-"):
             return True
@@ -795,7 +795,7 @@ class Parser:
             return node("Lit", type="BOOL", value=t.value, line=t.line)
         if self.kw("match"):
             return self.parse_match()
-        if self.kw("func"):
+        if self.kw("fn"):
             return self.parse_closure()
         if self.op("("):
             self.eat_op("(")
@@ -819,7 +819,7 @@ class Parser:
         self.err("expected an expression")
 
     def parse_closure(self):
-        self.eat_kw("func")
+        self.eat_kw("fn")
         self.eat_op("(")
         params = self.parse_params()
         self.eat_op(")")

@@ -8,10 +8,10 @@ module parse_sample
 
 const LIMIT = 5
 
-func add(a: Int, b: Int) -> Int:
+fn add(a: Int, b: Int) -> Int:
     return a + b
 
-func classify(n: Int) -> String:
+fn classify(n: Int) -> String:
     if n < 0:
         return "neg"
     elif n == 0:
@@ -19,7 +19,7 @@ func classify(n: Int) -> String:
     else:
         return "pos"
 
-func sumTo(n: Int) -> Int:
+fn sumTo(n: Int) -> Int:
     var total = 0
     var i = 1
     while i <= n:
@@ -27,14 +27,14 @@ func sumTo(n: Int) -> Int:
         i = i + 1
     return total
 
-func demo() -> Int:
+fn demo() -> Int:
     var xs = [10, 20, 30, 40]
     var acc = xs[0]
     for x in xs:
         acc = acc + x * 2 - 1
     return acc
 
-func main():
+fn main():
     print(add(2, 3))
     print(classify(-1))
     print(sumTo(LIMIT))

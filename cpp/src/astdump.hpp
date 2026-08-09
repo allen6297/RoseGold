@@ -57,7 +57,7 @@ static std::string dumpAst(const std::string& mod, Parsed& P) {
     std::string o = "(module " + mod + ")\n";
     for (auto& g : P.globals) { adStmt(g, o); o += "\n"; }
     for (auto& f : P.funcs) {
-        o += "(func " + f.name + " (params";
+        o += "(fn " + f.name + " (params";
         for (size_t k = 0; k < f.params.size(); k++) o += " (" + f.params[k] + " " + (k < f.ptypes.size() && f.ptypes[k] ? adTy(f.ptypes[k]) : "Any") + ")";
         o += ") " + (f.retType ? adTy(f.retType) : "Void");
         adBlock(f.body, o);

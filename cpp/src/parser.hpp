@@ -25,7 +25,7 @@ struct Parser {
     std::vector<Stmt> suite() { beginBlock(); std::vector<Stmt> out; while (!is(Tk::DEDENT) && !is(Tk::END)) { out.push_back(statement()); skipNL(); } if (is(Tk::DEDENT)) i++; return out; }
     TyNodeP parseType() {
         auto t = std::make_shared<TyNode>();
-        if (isKw("func")) { t->isFunc = true; i++; eatOp("("); if (!isOp(")")) { t->fparams.push_back(parseType()); while (isOp(",")) { i++; t->fparams.push_back(parseType()); } } eatOp(")"); eatOp("->"); t->fret = parseType(); return t; }
+        if (isKw("fn")) { t->isFunc = true; i++; eatOp("("); if (!isOp(")")) { t->fparams.push_back(parseType()); while (isOp(",")) { i++; t->fparams.push_back(parseType()); } } eatOp(")"); eatOp("->"); t->fret = parseType(); return t; }
         t->name = eatIdent();
         if (isOp("<")) { i++; t->args.push_back(parseType()); while (isOp(",")) { i++; t->args.push_back(parseType()); } eatOp(">"); }
         return t;
@@ -44,16 +44,16 @@ struct Parser {
     void param(PL& pl) { Token nt = peek(); pl.names.push_back(eatIdent()); pl.pos.push_back({nt.line, nt.col}); if (isOp(":")) { i++; pl.types.push_back(parseType()); } else pl.types.push_back(nullptr); }
     int parseVis() { int v = 0; while (isKw("pub") || isKw("internal") || isKw("private") || isKw("static")) { if (isKw("pub")) v = 1; else if (isKw("private")) v = 2; else if (isKw("internal") && v == 0) v = 3; i++; } return v; }
 
-    Func func() { eatKw("func"); Func f; Token nt = peek(); f.name = eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col; f.generics = genericNames(f.bounds); auto pl = params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types; if (isOp("->")) { i++; f.retType = parseType(); } f.body = suite(); return f; }
+    Func func() { eatKw("fn"); Func f; Token nt = peek(); f.name = eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col; f.generics = genericNames(f.bounds); auto pl = params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types; if (isOp("->")) { i++; f.retType = parseType(); } f.body = suite(); return f; }
     // trait method: an abstract signature (ends at NEWLINE), or a default implementation (has a `:` body).
-    Func funcSig() { eatKw("func"); Func f; f.isSig = true; Token nt = peek(); f.name = eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col; f.generics = genericNames(f.bounds); auto pl = params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types; if (isOp("->")) { i++; f.retType = parseType(); } if (isOp(":")) f.body = suite(); return f; }
+    Func funcSig() { eatKw("fn"); Func f; f.isSig = true; Token nt = peek(); f.name = eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col; f.generics = genericNames(f.bounds); auto pl = params(); f.params = pl.names; f.paramPos = pl.pos; f.ptypes = pl.types; if (isOp("->")) { i++; f.retType = parseType(); } if (isOp(":")) f.body = suite(); return f; }
     TraitAst traitDecl() {
         eatKw("trait"); TraitAst Tr; Token nt = peek(); Tr.name = eatIdent(); Tr.nameLine = nt.line; Tr.nameCol = nt.col; Tr.generics = genericNames(Tr.bounds);
         if (isKw("uses")) { i++; Tr.uses.push_back(parseType()->name); while (isOp(",")) { i++; Tr.uses.push_back(parseType()->name); } }
         beginBlock();
         while (!is(Tk::DEDENT) && !is(Tk::END)) {
             int mv = parseVis();
-            if (isKw("func")) { Func m = funcSig(); m.vis = mv; Tr.methods.push_back(std::move(m)); }
+            if (isKw("fn")) { Func m = funcSig(); m.vis = mv; Tr.methods.push_back(std::move(m)); }
             else err("expected a trait method signature");
             skipNL();
         }
@@ -71,7 +71,7 @@ struct Parser {
             if (isKw("var") || isKw("const")) { i++; Field f; f.vis = mv; Token nt = peek(); f.name = eatIdent(); f.nameLine = nt.line; f.nameCol = nt.col; if (isOp(":")) { i++; f.type = parseType(); } if (isOp("=")) { i++; f.init = expr(); f.hasInit = true; } C.fields.push_back(std::move(f)); }
             else if (isKw("init")) { i++; C.hasCtor = true; auto pl = params(); C.ctorParams = pl.names; C.ctorParamPos = pl.pos; C.ctorPtypes = pl.types; C.ctorBody = suite(); }
             else if (isKw("signal")) { i++; SignalDecl sg; Token snt = peek(); sg.name = eatIdent(); sg.nameLine = snt.line; sg.nameCol = snt.col; auto pl = params(); sg.params = pl.names; sg.paramPos = pl.pos; sg.ptypes = pl.types; C.signals.push_back(std::move(sg)); }
-            else if (isKw("func")) { Func m = func(); m.vis = mv; C.methods.push_back(std::move(m)); }
+            else if (isKw("fn")) { Func m = func(); m.vis = mv; C.methods.push_back(std::move(m)); }
             else err("expected a class member");
             skipNL();
         }
@@ -84,7 +84,7 @@ struct Parser {
         beginBlock();
         while (!is(Tk::DEDENT) && !is(Tk::END)) {
             parseVis();
-            if (isKw("func")) X.methods.push_back(func());
+            if (isKw("fn")) X.methods.push_back(func());
             else err("expected a method in the extension");
             skipNL();
         }
@@ -160,7 +160,7 @@ struct Parser {
         err("expected a literal");
     }
     ExprP closureExpr() {
-        eatKw("func"); auto e = std::make_unique<Expr>(); e->k = Expr::CLOSURE; auto pl = params(); e->params = pl.names; e->ptypes = pl.types;
+        eatKw("fn"); auto e = std::make_unique<Expr>(); e->k = Expr::CLOSURE; auto pl = params(); e->params = pl.names; e->ptypes = pl.types;
         if (isOp("->")) { i++; e->retType = parseType(); }
         eatOp("=>"); e->lhs = expr(); return e;
     }
@@ -168,7 +168,7 @@ struct Parser {
         Token t = peek();
         if (t.t == Tk::INT || t.t == Tk::FLT || t.t == Tk::STR || isKw("true") || isKw("false")) return litExpr();
         if (isKw("match")) return matchExpr();
-        if (isKw("func")) return closureExpr();
+        if (isKw("fn")) return closureExpr();
         if (t.t == Tk::IDENT) { auto e = std::make_unique<Expr>(); e->line = t.line; e->col = t.col; i++; e->k = Expr::NAME; e->sval = t.s; return e; }
         if (isOp("(")) { i++; ExprP inner = expr(); eatOp(")"); return inner; }
         if (isOp("[")) { i++; auto e2 = std::make_unique<Expr>(); e2->k = Expr::LIST; if (!isOp("]")) { e2->args.push_back(expr()); while (isOp(",")) { i++; if (isOp("]")) break; e2->args.push_back(expr()); } } eatOp("]"); return e2; }
@@ -202,7 +202,7 @@ struct Parser {
             if (isKw("pub") && peek(1).t == Tk::KW && peek(1).s == "import") { i++; pub = true; }
             if (isKw("import")) { p.imports.push_back(importDecl(pub)); skipNL(); continue; }
             int tv = parseVis();
-            if (isKw("func")) { Func f = func(); f.vis = tv; p.funcs.push_back(std::move(f)); }
+            if (isKw("fn")) { Func f = func(); f.vis = tv; p.funcs.push_back(std::move(f)); }
             else if (isKw("class")) { ClassAst c = classDecl(); c.vis = tv; p.classes.push_back(std::move(c)); }
             else if (isKw("trait")) { TraitAst t = traitDecl(); t.vis = tv; p.traits.push_back(std::move(t)); }
             else if (isKw("extend")) { p.extensions.push_back(extendDecl()); }

@@ -1,4 +1,4 @@
 module util
 
-pub func twice(x: Int) -> Int:
+pub fn twice(x: Int) -> Int:
     return x + x

@@ -7,11 +7,11 @@ class Point:
         self.x = a
         self.y = b
 
-func add(a: Int, b: Int) -> Int:
+fn add(a: Int, b: Int) -> Int:
     var sum = a + b
     return sum
 
-func main():
+fn main():
     var x = 10
     var y = 32
     var z = add(x, y)
