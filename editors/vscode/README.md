@@ -3,7 +3,7 @@
 Language support for [RoseGold](../../README.md) `.rg` files.
 
 ## What it provides
-- **Syntax highlighting** — keywords, types, functions, strings, comments (`#` and `#/ … /#`), numbers, operators.
+- **Syntax highlighting** — keywords (control-flow jumps colored apart), types, functions (declarations and calls in distinct colors), strings, comments (`#` and `#/ … /#`), numbers, operators. Ships sensible default colors you can override.
 - **Editor config** — `#` line / `#/ /#` block comments, `(`/`[` bracket matching & auto-close, and auto-indent after a `:` (the offside rule).
 - **Language server** — the extension launches the native `rosegoldc --lsp` and talks to it over LSP, so all of the following come straight from the canonical C++ implementation (real inference, not pattern matching):
   - **Diagnostics** — parse and type errors as you type.

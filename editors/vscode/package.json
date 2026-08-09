@@ -3,7 +3,7 @@
   "publisher": "rosegold",
   "displayName": "RoseGold",
   "description": "Language support for RoseGold: syntax highlighting, editor config, and a native language server (diagnostics, hover, go-to-definition, completion).",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "engines": { "vscode": "^1.75.0" },
   "categories": ["Programming Languages"],
   "main": "./extension.js",
@@ -29,6 +29,21 @@
     "configurationDefaults": {
       "[rosegold]": {
         "editor.defaultFormatter": "rosegold.rosegold"
+      },
+      "editor.semanticTokenColorCustomizations": {
+        "rules": {
+          "function.declaration:rosegold": { "foreground": "#FFC66D" },
+          "function:rosegold": { "foreground": "#57AAF7" },
+          "method.declaration:rosegold": { "foreground": "#FFC66D" },
+          "method:rosegold": { "foreground": "#57AAF7" }
+        }
+      },
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          { "scope": "entity.name.function.rosegold", "settings": { "foreground": "#FFC66D" } },
+          { "scope": "entity.name.function.call.rosegold", "settings": { "foreground": "#57AAF7" } },
+          { "scope": "keyword.control.flow.rosegold", "settings": { "foreground": "#C586C0" } }
+        ]
       }
     },
     "breakpoints": [

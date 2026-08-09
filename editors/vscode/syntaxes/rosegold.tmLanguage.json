@@ -3,15 +3,33 @@
   "name": "RoseGold",
   "scopeName": "source.rosegold",
   "patterns": [
-    { "include": "#comments" },
-    { "include": "#strings" },
-    { "include": "#keywords" },
-    { "include": "#declarations" },
-    { "include": "#constants" },
-    { "include": "#types" },
-    { "include": "#calls" },
-    { "include": "#numbers" },
-    { "include": "#operators" }
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#declarations"
+    },
+    {
+      "include": "#constants"
+    },
+    {
+      "include": "#types"
+    },
+    {
+      "include": "#calls"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#operators"
+    }
   ],
   "repository": {
     "comments": {
@@ -32,40 +50,55 @@
       "begin": "\"",
       "end": "\"",
       "patterns": [
-        { "name": "constant.character.escape.rosegold", "match": "\\\\." }
+        {
+          "name": "constant.character.escape.rosegold",
+          "match": "\\\\."
+        }
       ]
     },
     "keywords": {
       "patterns": [
         {
+          "name": "keyword.control.flow.rosegold",
+          "match": "\\b(break|continue|return|yield|pass|raise)\\b"
+        },
+        {
           "name": "keyword.control.rosegold",
-          "match": "\\b(if|elif|else|while|for|in|match|break|continue|try|catch|raise|return|pass)\\b"
+          "match": "\\b(if|elif|else|while|for|in|match|try|catch)\\b"
         },
         {
           "name": "keyword.other.rosegold",
-          "match": "\\b(module|import|as|extends|uses|pub|internal|private|static)\\b"
+          "match": "\\b(module|import|as|extends|extend|uses|pub|internal|private|static|extern)\\b"
         }
       ]
     },
     "declarations": {
       "patterns": [
         {
-          "match": "\\b(func)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
           "captures": {
-            "1": { "name": "storage.type.function.rosegold" },
-            "2": { "name": "entity.name.function.rosegold" }
+            "1": {
+              "name": "storage.type.function.rosegold"
+            },
+            "2": {
+              "name": "entity.name.function.rosegold"
+            }
           }
         },
         {
           "match": "\\b(class|trait|enum)\\s+([A-Za-z_][A-Za-z0-9_]*)",
           "captures": {
-            "1": { "name": "storage.type.rosegold" },
-            "2": { "name": "entity.name.type.rosegold" }
+            "1": {
+              "name": "storage.type.rosegold"
+            },
+            "2": {
+              "name": "entity.name.type.rosegold"
+            }
           }
         },
         {
           "name": "storage.type.rosegold",
-          "match": "\\b(func|class|trait|enum|var|const|init)\\b"
+          "match": "\\b(fn|class|trait|enum|var|const|init|signal)\\b"
         }
       ]
     },
@@ -80,7 +113,9 @@
     "calls": {
       "match": "\\b([a-z_][A-Za-z0-9_]*)\\s*(?=\\()",
       "captures": {
-        "1": { "name": "entity.name.function.call.rosegold" }
+        "1": {
+          "name": "entity.name.function.call.rosegold"
+        }
       }
     },
     "numbers": {
