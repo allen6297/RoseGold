@@ -164,11 +164,11 @@ export class Parser {
     return Tr;
   }
 
-  classDecl(): ClassAst {
-    this.eatKw("class"); const C = mkClass(); const nt = this.peek();
+  classDecl(isValue: boolean): ClassAst {
+    this.eatKw(isValue ? "struct" : "class"); const C = mkClass(); C.isValue = isValue; const nt = this.peek();
     C.name = this.eatIdent(); C.nameLine = nt.line;
     C.generics = this.genericNames(C.bounds);
-    if (this.isKw("extends")) { this.i++; C.extends = this.parseType().name; }
+    if (this.isKw("extends")) { if (isValue) this.err("a struct cannot extend a base type"); this.i++; C.extends = this.parseType().name; }
     if (this.isKw("uses")) { this.i++; C.uses.push(this.parseType().name); while (this.isOp(",")) { this.i++; C.uses.push(this.parseType().name); } }
     this.beginBlock();
     while (!this.is("DEDENT") && !this.is("END")) {
@@ -389,7 +389,8 @@ export class Parser {
       if (this.isKw("import")) { p.imports.push(this.importDecl(pub)); this.skipNL(); continue; }
       const tv = this.parseVis();
       if (this.isKw("fn")) { const f = this.func(); f.vis = tv; p.funcs.push(f); }
-      else if (this.isKw("class")) { const c = this.classDecl(); c.vis = tv; p.classes.push(c); }
+      else if (this.isKw("class")) { const c = this.classDecl(false); c.vis = tv; p.classes.push(c); }
+      else if (this.isKw("struct")) { const c = this.classDecl(true); c.vis = tv; p.classes.push(c); }
       else if (this.isKw("trait")) { const t = this.traitDecl(); t.vis = tv; p.traits.push(t); }
       else if (this.isKw("extend")) { p.extensions.push(this.extendDecl()); }
       else if (this.isKw("extern")) this.externBlock(tv, p);

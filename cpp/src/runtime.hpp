@@ -75,7 +75,7 @@ static void buildProgram(std::map<std::string, Parsed>& mods, std::vector<std::s
     for (auto& m : order) {   // reservation pass (dependency order)
         Parsed& P = mods[m]; auto& S = prog.syms[m];
         for (auto& g : P.globals) if (!S.count(g.name)) S[g.name] = {3, prog.nglobals++};
-        for (auto& C : P.classes) { int ci = (int)prog.classes.size(); prog.classes.push_back({C.name}); for (auto& f : C.fields) prog.classes.back().fieldNames.push_back(f.name); for (auto& sg : C.signals) prog.classes.back().fieldNames.push_back(sg.name); S[C.name] = {1, ci}; }
+        for (auto& C : P.classes) { int ci = (int)prog.classes.size(); prog.classes.push_back({C.name}); prog.classes.back().isValue = C.isValue; for (auto& f : C.fields) prog.classes.back().fieldNames.push_back(f.name); for (auto& sg : C.signals) prog.classes.back().fieldNames.push_back(sg.name); S[C.name] = {1, ci}; }
         for (auto& E : P.enums) for (auto& v : E.variants) { int vi = (int)prog.variants.size(); prog.variants.push_back({E.name, v.first, (int)v.second.size()}); S[v.first] = {2, vi}; }
         for (auto& f : P.funcs) { int fi = (int)prog.funcs.size(); prog.funcs.push_back({m + "::" + f.name}); S[f.name] = {0, fi}; }
         for (auto& ex : P.externs) { if (!S.count(ex.name)) S[ex.name] = {4, 0}; prog.nativeKey[ex.name] = ex.tag.empty() ? ex.name : ex.tag + "::" + ex.name; }   // kind 4 = extern/native (resolved by "tag::name" at runtime)

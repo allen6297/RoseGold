@@ -34,10 +34,23 @@ struct YieldSignal { Value value; };   // thrown by `yield`, caught by resume() 
 // breakpoint or a step. Null in normal runs — one predictable branch per instr.
 static std::function<void(Program&, std::vector<Value>&, std::vector<Value>&, std::vector<Frame>&)> g_dbgHook;
 
+// Value-type (struct) copy: a struct value is copied whenever it is stored into a
+// variable, field, list/map/variant, passed as an argument, or returned — giving
+// C#/Swift value semantics (each binding an independent identity). Shallow over
+// reference-type fields (lists/class instances stay shared), recursive over nested
+// struct fields. A no-op for classes and non-instances.
+static void copyValueType(Value& v, Program& prog) {
+    auto p = std::get_if<std::shared_ptr<Instance>>(&v);
+    if (!p || !*p || !prog.classes[(*p)->clsIndex].isValue) return;
+    auto n = std::make_shared<Instance>(**p);                  // copy the field map
+    for (auto& kv : n->fields) copyValueType(kv.second, prog);  // deep-copy nested value types
+    v = n;
+}
+
 // Runs `frames` (with value stack `st`) to completion, returning the top-of-stack result;
 // throws YieldSignal on `yield`. Re-entrant: resume() calls it on a coroutine's own stacks.
 static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Value>& st, std::vector<Frame>& frames, std::vector<Handler>& handlers) {
-    auto call = [&](int fi, int argc) { CFunc* fn = &prog.funcs[fi]; int base = (int)st.size() - argc; while ((int)st.size() < base + fn->nlocals) st.push_back(Value{}); frames.push_back({fn, 0, base}); };
+    auto call = [&](int fi, int argc) { CFunc* fn = &prog.funcs[fi]; int base = (int)st.size() - argc; while ((int)st.size() < base + fn->nlocals) st.push_back(Value{}); for (int k = base; k < base + argc; k++) copyValueType(st[k], prog); frames.push_back({fn, 0, base}); };
     auto asList = [&](const Value& v) -> ListObj& { if (auto p = std::get_if<std::shared_ptr<ListObj>>(&v)) return **p; throw VMError("expected a list"); };
     auto asInst = [&](const Value& v) -> Instance& { if (auto p = std::get_if<std::shared_ptr<Instance>>(&v)) return **p; throw VMError("expected an object"); };
     auto asMap = [&](const Value& v) -> MapObj& { if (auto p = std::get_if<std::shared_ptr<MapObj>>(&v)) return **p; throw VMError("expected a map"); };
@@ -49,9 +62,9 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
             case Op::CONST: st.push_back(prog.consts[in.a]); break;
             case Op::PUSHNIL: st.push_back(Value{}); break;
             case Op::LOAD: st.push_back(st[fr.base + in.a]); break;
-            case Op::STORE: st[fr.base + in.a] = st.back(); st.pop_back(); break;
+            case Op::STORE: st[fr.base + in.a] = st.back(); st.pop_back(); copyValueType(st[fr.base + in.a], prog); break;
             case Op::LOADG: st.push_back(globals[in.a]); break;
-            case Op::STOREG: globals[in.a] = st.back(); st.pop_back(); break;
+            case Op::STOREG: globals[in.a] = st.back(); st.pop_back(); copyValueType(globals[in.a], prog); break;
             case Op::POP: st.pop_back(); break;
             case Op::NEG: { Value v = st.back(); st.pop_back(); if (std::holds_alternative<int64_t>(v)) st.push_back(Value{-std::get<int64_t>(v)}); else st.push_back(Value{-asNum(v)}); break; }
             case Op::NOT: { Value v = st.back(); st.pop_back(); st.push_back(Value{!truthy(v)}); break; }
@@ -68,18 +81,18 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
             case Op::JUMP: fr.ip = in.a; break;
             case Op::JFALSE: { Value v = st.back(); st.pop_back(); if (!truthy(v)) fr.ip = in.a; break; }
             case Op::JTRUE: { Value v = st.back(); st.pop_back(); if (truthy(v)) fr.ip = in.a; break; }
-            case Op::MAKELIST: { auto lo = std::make_shared<ListObj>(); lo->items.resize(in.a); for (int k = in.a - 1; k >= 0; k--) { lo->items[k] = st.back(); st.pop_back(); } st.push_back(Value{lo}); break; }
+            case Op::MAKELIST: { auto lo = std::make_shared<ListObj>(); lo->items.resize(in.a); for (int k = in.a - 1; k >= 0; k--) { lo->items[k] = st.back(); st.pop_back(); } for (auto& it : lo->items) copyValueType(it, prog); st.push_back(Value{lo}); break; }
             case Op::IGET: { Value idx = st.back(); st.pop_back(); Value lst = st.back(); st.pop_back(); if (!std::holds_alternative<int64_t>(idx)) throw VMError("index must be an integer"); int64_t k = std::get<int64_t>(idx); if (auto sp = std::get_if<std::string>(&lst)) { if (k < 0 || k >= (int64_t)sp->size()) throw VMError("string index out of range"); st.push_back(Value{std::string(1, (*sp)[k])}); break; } ListObj& L = asList(lst); if (k < 0 || k >= (int64_t)L.items.size()) throw VMError("list index " + std::to_string(k) + " out of range"); st.push_back(L.items[k]); break; }
-            case Op::ISET: { Value val = st.back(); st.pop_back(); Value idx = st.back(); st.pop_back(); Value lst = st.back(); st.pop_back(); if (!std::holds_alternative<int64_t>(idx)) throw VMError("index must be an integer"); int64_t k = std::get<int64_t>(idx); ListObj& L = asList(lst); if (k < 0 || k >= (int64_t)L.items.size()) throw VMError("list index " + std::to_string(k) + " out of range"); L.items[k] = val; break; }
+            case Op::ISET: { Value val = st.back(); st.pop_back(); copyValueType(val, prog); Value idx = st.back(); st.pop_back(); Value lst = st.back(); st.pop_back(); if (!std::holds_alternative<int64_t>(idx)) throw VMError("index must be an integer"); int64_t k = std::get<int64_t>(idx); ListObj& L = asList(lst); if (k < 0 || k >= (int64_t)L.items.size()) throw VMError("list index " + std::to_string(k) + " out of range"); L.items[k] = val; break; }
             case Op::NEWOBJ: { auto inst = std::make_shared<Instance>(); inst->clsIndex = in.a; inst->cls = prog.classes[in.a].name; for (auto& fn : prog.classes[in.a].fieldNames) inst->fields[fn] = Value{}; st.push_back(Value{inst}); break; }
             case Op::GETPROP: { Value o = st.back(); st.pop_back(); const std::string& name = std::get<std::string>(prog.consts[in.a]); if (auto pv = std::get_if<Vec>(&o)) { st.push_back(Value{name == "x" ? pv->x : name == "y" ? pv->y : name == "z" ? pv->z : 0.0}); break; } Instance& I = asInst(o); auto it = I.fields.find(name); if (it == I.fields.end()) throw VMError("'" + I.cls + "' has no member '" + name + "'"); st.push_back(it->second); break; }
-            case Op::SETPROP: { Value val = st.back(); st.pop_back(); Value o = st.back(); st.pop_back(); asInst(o).fields[std::get<std::string>(prog.consts[in.a])] = val; break; }
+            case Op::SETPROP: { Value val = st.back(); st.pop_back(); copyValueType(val, prog); Value o = st.back(); st.pop_back(); asInst(o).fields[std::get<std::string>(prog.consts[in.a])] = val; break; }
             case Op::INVOKE: { int argc = in.b; const std::string& name = std::get<std::string>(prog.consts[in.a]); Value o = st[st.size() - argc - 1];
                 if (auto p = std::get_if<std::shared_ptr<Instance>>(&o)) { auto& ms = prog.classes[(*p)->clsIndex].methods; auto it = ms.find(name); if (it == ms.end()) throw VMError("'" + (*p)->cls + "' has no method '" + name + "'"); call(it->second, argc + 1); break; }
                 std::string tag = typeTag(o); auto te = prog.extensions.find(tag);   // extension method on a primitive/List/Map
                 if (te != prog.extensions.end()) { auto it = te->second.find(name); if (it != te->second.end()) { call(it->second, argc + 1); break; } }
                 throw VMError("'" + tag + "' has no method '" + name + "'"); }
-            case Op::MKVARIANT: { auto vv = std::make_shared<VariantVal>(); vv->enumName = prog.variants[in.a].enumName; vv->name = prog.variants[in.a].name; vv->vals.resize(in.b); for (int k = in.b - 1; k >= 0; k--) { vv->vals[k] = st.back(); st.pop_back(); } st.push_back(Value{vv}); break; }
+            case Op::MKVARIANT: { auto vv = std::make_shared<VariantVal>(); vv->enumName = prog.variants[in.a].enumName; vv->name = prog.variants[in.a].name; vv->vals.resize(in.b); for (int k = in.b - 1; k >= 0; k--) { vv->vals[k] = st.back(); st.pop_back(); } for (auto& x : vv->vals) copyValueType(x, prog); st.push_back(Value{vv}); break; }
             case Op::ISVARIANT: { Value v = st.back(); st.pop_back(); const std::string& name = std::get<std::string>(prog.consts[in.a]); bool r = false; if (auto p = std::get_if<std::shared_ptr<VariantVal>>(&v)) r = ((*p)->name == name); st.push_back(Value{r}); break; }
             case Op::VGET: { Value v = st.back(); st.pop_back(); auto p = std::get_if<std::shared_ptr<VariantVal>>(&v); if (!p) throw VMError("not a variant"); st.push_back((*p)->vals[in.a]); break; }
             case Op::MKCLOSURE: { auto cl = std::make_shared<Closure>(); cl->fn = in.a; cl->upvals.resize(in.b); for (int k = in.b - 1; k >= 0; k--) { cl->upvals[k] = st.back(); st.pop_back(); } st.push_back(Value{cl}); break; }
@@ -89,7 +102,7 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
                 std::vector<Value> args(st.begin() + cpos + 1, st.end()); st.resize(cpos);
                 for (auto& u : (*cl)->upvals) st.push_back(u); for (auto& a : args) st.push_back(a);
                 CFunc* fn = &prog.funcs[(*cl)->fn]; int nu = (int)(*cl)->upvals.size(); int base = (int)st.size() - (nu + argc);
-                while ((int)st.size() < base + fn->nlocals) st.push_back(Value{}); frames.push_back({fn, 0, base}); break;
+                while ((int)st.size() < base + fn->nlocals) st.push_back(Value{}); for (int k = base + nu; k < base + nu + argc; k++) copyValueType(st[k], prog); frames.push_back({fn, 0, base}); break;
             }
             case Op::SETUP_TRY: handlers.push_back({in.a, frames.size(), st.size()}); break;
             case Op::POP_TRY: handlers.pop_back(); break;
@@ -110,7 +123,7 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
                 else if (in.a == 11) { Value x = st.back(); st.pop_back(); const std::string& p = std::get<std::string>(x); std::ifstream f(p); if (!f) throw VMError("readFile: cannot open " + p); std::stringstream ss; ss << f.rdbuf(); st.push_back(Value{ss.str()}); }
                 else if (in.a == 12) { Value d = st.back(); st.pop_back(); Value pv = st.back(); st.pop_back(); const std::string& p = std::get<std::string>(pv); const std::string& data = std::get<std::string>(d); std::ofstream of(p); if (!of) throw VMError("writeFile: cannot open " + p); of << data; st.push_back(Value{}); }
                 else if (in.a == 13) { st.push_back(Value{std::make_shared<MapObj>()}); }
-                else if (in.a == 14) { Value vv = st.back(); st.pop_back(); Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); bool found = false; for (auto& pr : M.items) if (valueEq(pr.first, kk)) { pr.second = vv; found = true; break; } if (!found) M.items.push_back({kk, vv}); st.push_back(Value{}); }
+                else if (in.a == 14) { Value vv = st.back(); st.pop_back(); copyValueType(vv, prog); Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); bool found = false; for (auto& pr : M.items) if (valueEq(pr.first, kk)) { pr.second = vv; found = true; break; } if (!found) M.items.push_back({kk, vv}); st.push_back(Value{}); }
                 else if (in.a == 15) { Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); Value* found = nullptr; for (auto& pr : M.items) if (valueEq(pr.first, kk)) { found = &pr.second; break; } if (!found) throw VMError("get(): key not found: " + toStr(kk)); st.push_back(*found); }
                 else if (in.a == 16) { Value kk = st.back(); st.pop_back(); Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); bool r = false; for (auto& pr : M.items) if (valueEq(pr.first, kk)) { r = true; break; } st.push_back(Value{r}); }
                 else if (in.a == 17) { Value mv = st.back(); st.pop_back(); MapObj& M = asMap(mv); auto lo = std::make_shared<ListObj>(); for (auto& pr : M.items) lo->items.push_back(pr.first); st.push_back(Value{lo}); }
@@ -188,7 +201,7 @@ static Value runLoop(Program& prog, std::vector<Value>& globals, std::vector<Val
                 st.push_back(prog.natives->entries[idx].fn(args)); break;
             }
             case Op::CALL: call(in.a, in.b); break;
-            case Op::RET: { Value ret = st.back(); st.pop_back(); int base = frames.back().base; frames.pop_back(); st.resize(base); st.push_back(ret); break; }
+            case Op::RET: { Value ret = st.back(); st.pop_back(); copyValueType(ret, prog); int base = frames.back().base; frames.pop_back(); st.resize(base); st.push_back(ret); break; }
         }
     }
     return st.empty() ? Value{} : st.back();

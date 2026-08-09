@@ -37,8 +37,7 @@ BoolLit     = "true" | "false" ;
 (* Keywords (reserved): module import as pub internal private static
    class struct trait enum extends uses fn init var const return pass
    if elif else while for in match break continue try catch raise
-   true false
-   (`struct` is reserved for a future value-type record; not yet implemented) *)
+   true false *)
 
 (* ---------- The offside rule (indentation) ----------
 
@@ -74,6 +73,7 @@ ImportDecl  = [ "pub" ] , "import" , ModulePath ,
               NEWLINE ;
 
 Declaration = ClassDecl
+            | StructDecl
             | TraitDecl
             | ExtendDecl
             | EnumDecl
@@ -126,6 +126,13 @@ Suite       = ":" , NEWLINE , INDENT , Statement , { Statement } , DEDENT ;
 
 ClassDecl   = Modifiers , "class" , Ident , [ GenericParams ] ,
               [ "extends" , Type ] ,
+              [ "uses" , TypeList ] ,
+              ":" , NEWLINE , INDENT , Member , { Member } , DEDENT ;
+
+(* A struct is a VALUE type: same body as a class (fields, methods, `uses`
+   traits, init), but COPIED on assign/pass/store (independent identity) and
+   with no `extends`. -- SEMANTIC *)
+StructDecl  = Modifiers , "struct" , Ident , [ GenericParams ] ,
               [ "uses" , TypeList ] ,
               ":" , NEWLINE , INDENT , Member , { Member } , DEDENT ;
 

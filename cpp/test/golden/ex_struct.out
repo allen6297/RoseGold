@@ -1,0 +1,6 @@
+a = 1 2
+b = 100 2
+a.total = 3
+c = 11 12
+a still = 1 2
+list = 7 1

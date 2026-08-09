@@ -75,6 +75,7 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 - `var` / `const` (const must be initialized), with type inference
 - `fn name(a: Int) -> Bool:` ; single-expression closures `fn(x: Int) => x + 1`
 - `class` with `extends` (one base) + `uses` (traits), `init(...)` constructors
+- `struct` — a **value type**: same shape as a `class` (fields, methods, `uses` traits, `init`) but **copied** on assignment / passing / storing (independent identity), and no `extends` — compose, don't inherit
 - `trait` — abstract method signatures + optional **default bodies** (inherited by conformers, overridable); may use `Self` for the conforming type; a class that `uses` a trait must implement the abstract methods (checked), and a trait is a usable type (dynamic dispatch)
 - `extend Type uses Trait` — **retroactive conformance**: make an existing type (including primitives like `Int`/`String`, `List`/`Map`, or a class) conform to a trait after the fact, so it satisfies `<T: Trait>` bounds; methods dispatch dynamically (`3.lessThan(9)`)
 - **operator overloading** — `+ - * / %` dispatch to `add`/`sub`/`mul`/`div`/`mod`, `< <= > >=` to `compareTo`, and `== !=` to `equals` on any user type (class method or via `extend`); also works on trait-bounded generics (`a < b` where `T: Ordered`)

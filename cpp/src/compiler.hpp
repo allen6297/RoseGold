@@ -15,7 +15,7 @@ enum class Op {
 };
 struct Instr { Op op; int a = 0; int b = 0; int line = 0; };   // line: 1-based source line (for the debugger), 0 if synthetic
 struct CFunc { std::string name; int nlocals = 0; std::vector<Instr> code; std::vector<std::string> localNames; };   // localNames[slot] -> variable name (debug info)
-struct ClassDesc { std::string name; std::vector<std::string> fieldNames; int newFunc = -1; std::map<std::string, int> methods; };
+struct ClassDesc { std::string name; std::vector<std::string> fieldNames; int newFunc = -1; std::map<std::string, int> methods; bool isValue = false; };   // isValue: a struct (value type) -> copied by the VM on assign/pass/store
 struct VDesc { std::string enumName, name; int arity; };
 struct Sym { int kind; int index; };   // kind: 0 FUNC, 1 CLASS, 2 VARIANT, 3 GLOBAL
 struct Program {

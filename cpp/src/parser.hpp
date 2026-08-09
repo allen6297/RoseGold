@@ -81,9 +81,9 @@ struct Parser {
         return Tr;
     }
 
-    ClassAst classDecl() {
-        eatKw("class"); ClassAst C; Token nt = peek(); C.name = eatIdent(); C.nameLine = nt.line; C.nameCol = nt.col; C.generics = genericNames(C.bounds);
-        if (isKw("extends")) { i++; C.extends = parseType()->name; }
+    ClassAst classDecl(bool isValue) {
+        eatKw(isValue ? "struct" : "class"); ClassAst C; C.isValue = isValue; Token nt = peek(); C.name = eatIdent(); C.nameLine = nt.line; C.nameCol = nt.col; C.generics = genericNames(C.bounds);
+        if (isKw("extends")) { if (isValue) err("a struct cannot extend a base type"); i++; C.extends = parseType()->name; }
         if (isKw("uses")) { i++; C.uses.push_back(parseType()->name); while (isOp(",")) { i++; C.uses.push_back(parseType()->name); } }
         beginBlock();
         while (!is(Tk::DEDENT) && !is(Tk::END)) {
@@ -223,7 +223,8 @@ struct Parser {
             if (isKw("import")) { p.imports.push_back(importDecl(pub)); skipNL(); continue; }
             int tv = parseVis();
             if (isKw("fn")) { Func f = func(); f.vis = tv; p.funcs.push_back(std::move(f)); }
-            else if (isKw("class")) { ClassAst c = classDecl(); c.vis = tv; p.classes.push_back(std::move(c)); }
+            else if (isKw("class")) { ClassAst c = classDecl(false); c.vis = tv; p.classes.push_back(std::move(c)); }
+            else if (isKw("struct")) { ClassAst c = classDecl(true); c.vis = tv; p.classes.push_back(std::move(c)); }   // value-type record
             else if (isKw("trait")) { TraitAst t = traitDecl(); t.vis = tv; p.traits.push_back(std::move(t)); }
             else if (isKw("extend")) { p.extensions.push_back(extendDecl()); }
             else if (isKw("extern")) externBlock(tv, p);   // extern fn / extern: block / extern type : bound to a host native by name

@@ -85,10 +85,11 @@ export interface ClassAst {
   fields: Field[]; signals: SignalDecl[];
   hasCtor: boolean; ctorParams: string[]; ctorParamLines: number[];
   ctorPtypes: (TyNode | null)[]; ctorBody: Stmt[]; methods: Func[];
+  isValue: boolean;   // a `struct` (value type) vs a `class` (reference)
 }
 export const mkClass = (): ClassAst => ({
   name: "", nameLine: 0, generics: [], bounds: new Map(), extends: "", uses: [], vis: 0,
-  fields: [], signals: [], hasCtor: false, ctorParams: [], ctorParamLines: [], ctorPtypes: [], ctorBody: [], methods: [],
+  fields: [], signals: [], hasCtor: false, ctorParams: [], ctorParamLines: [], ctorPtypes: [], ctorBody: [], methods: [], isValue: false,
 });
 
 export interface TraitAst {
