@@ -61,12 +61,24 @@ class RoseGoldLexer : LexerBase() {
     }
 
     // True if the just-lexed identifier is immediately followed (past inline spaces)
-    // by '(' -- a function call or definition. Newlines aren't skipped, so a name at
-    // end of line isn't miscolored.
+    // by '(' -- a function call. Newlines aren't skipped, so a name at end of line
+    // isn't miscolored.
     private fun followedByCall(from: Int): Boolean {
         var j = from
         while (j < bufEnd && (buf[j] == ' ' || buf[j] == '\t')) j++
         return j < bufEnd && buf[j] == '('
+    }
+
+    // True if the identifier at `start` is preceded (past inline spaces) by the `fn`
+    // keyword -- i.e. a function/method declaration name. Reads the buffer directly
+    // (no lexer state), so it stays correct when highlighting restarts mid-file.
+    private fun precededByFn(start: Int): Boolean {
+        var j = start - 1
+        while (j >= 0 && (buf[j] == ' ' || buf[j] == '\t')) j--
+        if (j < 0 || !(buf[j].isLetterOrDigit() || buf[j] == '_')) return false
+        val end = j + 1
+        while (j >= 0 && (buf[j].isLetterOrDigit() || buf[j] == '_')) j--
+        return buf.subSequence(j + 1, end).toString() == "fn"
     }
 
     private fun scan() {
@@ -111,7 +123,8 @@ class RoseGoldLexer : LexerBase() {
                 tok = when {
                     keywords.contains(w) -> RoseGoldTokens.KEYWORD
                     w[0].isUpperCase() -> RoseGoldTokens.TYPE   // types / enum variants / constructors
-                    followedByCall(i) -> RoseGoldTokens.FUNCTION  // `name(` -> a call or fn definition
+                    precededByFn(tokStart) -> RoseGoldTokens.FUNCTION_DECL   // `fn name`
+                    followedByCall(i) -> RoseGoldTokens.FUNCTION_CALL         // `name(`
                     else -> RoseGoldTokens.IDENT
                 }
             }
