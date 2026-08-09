@@ -25,11 +25,12 @@ const KEYWORDS = new Set([
     // TOP LEVEL
     "module", "import",
 
-    // BODY LEVEL
+    //DECLARATION DECORATORS
+
+    // DECLARATION LEVEL
     "var", "const", "signal", "enum",
 
     //METHOD DECORATORS
-
 
     // METHOD PREFIX
     "pub", "internal", "private", "static",
