@@ -28,7 +28,7 @@ struct Stmt {
 };
 // Generic bounds: parameter name -> the trait names bounding it (`<T: A + B>`). Empty when unbounded.
 using Bounds = std::map<std::string, std::vector<std::string>>;
-struct Func { std::string name; int nameLine = 0, nameCol = 1; std::vector<std::string> params; std::vector<std::pair<int, int>> paramPos; std::vector<TyNodeP> ptypes; TyNodeP retType; std::vector<std::string> generics; Bounds bounds; bool isSig = false; int vis = 0; std::vector<Stmt> body; };
+struct Func { std::string name; int nameLine = 0, nameCol = 1; std::vector<std::string> params; std::vector<std::pair<int, int>> paramPos; std::vector<TyNodeP> ptypes; TyNodeP retType; std::vector<std::string> generics; Bounds bounds; bool isSig = false; int vis = 0; std::vector<Stmt> body; std::string tag; };   // tag: extern library namespace ("" = global)
 struct Field { std::string name; int nameLine = 0, nameCol = 1; TyNodeP type; int vis = 0; ExprP init; bool hasInit = false; };
 // A `signal name(params)` declaration: a first-class event with typed parameters.
 struct SignalDecl { std::string name; int nameLine = 0, nameCol = 1; std::vector<std::string> params; std::vector<std::pair<int, int>> paramPos; std::vector<TyNodeP> ptypes; };

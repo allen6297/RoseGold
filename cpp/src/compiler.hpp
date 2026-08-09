@@ -23,6 +23,7 @@ struct Program {
     std::vector<ClassDesc> classes; std::vector<VDesc> variants;
     std::map<std::string, std::map<std::string, Sym>> syms;   // module -> name -> sym
     std::map<std::string, std::map<std::string, int>> extensions;   // type tag (Int/Float/String/Bool/List/Map) -> method -> funcIndex
+    std::map<std::string, std::string> nativeKey;   // extern bare name -> registry key ("tag::name", or bare name if untagged)
     NativeRegistry* natives = nullptr;   // host-registered native functions (FFI), or null for the plain CLI
 };
 struct ModuleCtx {
@@ -196,7 +197,7 @@ struct Compiler {
         auto bi = BI.find(name); if (bi != BI.end()) { for (auto& a : e.args) expr(*a); emit(Op::BUILTIN, bi->second, argc); return; }
         // native call: an `extern func` (module sym kind 4) or a host-registered native. Resolved by name at runtime.
         { Sym ns; bool isExtern = resolveUn(name, ns) && ns.kind == 4;
-          if (isExtern || (prog.natives && prog.natives->find(name) >= 0)) { for (auto& a : e.args) expr(*a); emit(Op::NATIVE, nc(name), argc); return; } }
+          if (isExtern || (prog.natives && prog.natives->find(name) >= 0)) { for (auto& a : e.args) expr(*a); std::string key = prog.nativeKey.count(name) ? prog.nativeKey[name] : name; emit(Op::NATIVE, nc(key), argc); return; } }
         Sym s;
         if (resolveUn(name, s)) {
             if (s.kind == 3) { emit(Op::LOADG, s.index); for (auto& a : e.args) expr(*a); emit(Op::CALLV, argc); return; }

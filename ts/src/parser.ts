@@ -131,10 +131,11 @@ export class Parser {
   // host native by name. `type Name` declares an opaque foreign type (its only value is a host handle).
   externBlock(vis: number, p: Parsed): void {
     this.eatKw("extern");
-    if (this.isOp(":")) {                                       // extern: <block>
+    let tag = ""; if (this.is("STR")) tag = this.next().value;   // optional library tag: extern "audio" ...
+    if (this.isOp(":")) {                                       // extern ["tag"]: <block>
       this.beginBlock();
       while (!this.is("DEDENT") && !this.is("END")) {
-        if (this.isKw("fn")) { const f = this.funcSig(); f.vis = vis; p.externs.push(f); }
+        if (this.isKw("fn")) { const f = this.funcSig(); f.vis = vis; f.tag = tag; p.externs.push(f); }
         else if (this.is("IDENT") && this.peek().value === "type") { this.i++; p.externTypes.push(this.eatIdent()); }
         else this.err("expected 'fn' or 'type' in extern block");
         this.skipNL();
@@ -142,8 +143,8 @@ export class Parser {
       if (this.is("DEDENT")) this.i++;
     } else if (this.is("IDENT") && this.peek().value === "type") {  // extern type Name (one-liner)
       this.i++; p.externTypes.push(this.eatIdent());
-    } else {                                                    // extern fn name(...) -> Ret (one-liner)
-      const f = this.funcSig(); f.vis = vis; p.externs.push(f);
+    } else {                                                    // extern ["tag"] fn name(...) -> Ret (one-liner)
+      const f = this.funcSig(); f.vis = vis; f.tag = tag; p.externs.push(f);
     }
   }
 

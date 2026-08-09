@@ -90,7 +90,7 @@ docs/                grammar.ebnf (formal grammar) · resolution.md (module spec
 - Game/math stdlib: `sqrt sin cos tan atan2 floor ceil round pow abs min max lerp clamp random randint srandom`
 - Load-time `init:` block per module (runs once, dependencies first); programs start at `main()`
 - Modules: `module a.b`, `import m`, `import m as x`, `import m.(a, b)`, `pub import m`
-- **Native FFI**: an `extern:` block declares functions and opaque `type`s a C++ host provides (`extern fn host_add(a: Int, b: Int) -> Int`, `extern type Texture`). Calls are type-checked against the declarations (no host needed for `--check`); at load the host runtime **link-checks** them against its registry (arity + types) and binds by name, so a missing/mismatched native fails at load, not mid-run (Rust-`extern` style)
+- **Native FFI**: an `extern:` block declares functions and opaque `type`s a C++ host provides (`extern fn host_add(a: Int, b: Int) -> Int`, `extern type Texture`), optionally under a library tag (`extern "audio":` → natives bind to `audio::…`, so two libraries can share a name). Calls are type-checked against the declarations (no host needed for `--check`); at load the host runtime **link-checks** them against its registry (arity + types) and binds by tag+name, so a missing/mismatched native fails at load, not mid-run (Rust-`extern` style)
 - File extension: `.rg`
 
 ## Tools

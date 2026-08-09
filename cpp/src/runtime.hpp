@@ -78,7 +78,7 @@ static void buildProgram(std::map<std::string, Parsed>& mods, std::vector<std::s
         for (auto& C : P.classes) { int ci = (int)prog.classes.size(); prog.classes.push_back({C.name}); for (auto& f : C.fields) prog.classes.back().fieldNames.push_back(f.name); for (auto& sg : C.signals) prog.classes.back().fieldNames.push_back(sg.name); S[C.name] = {1, ci}; }
         for (auto& E : P.enums) for (auto& v : E.variants) { int vi = (int)prog.variants.size(); prog.variants.push_back({E.name, v.first, (int)v.second.size()}); S[v.first] = {2, vi}; }
         for (auto& f : P.funcs) { int fi = (int)prog.funcs.size(); prog.funcs.push_back({m + "::" + f.name}); S[f.name] = {0, fi}; }
-        for (auto& ex : P.externs) if (!S.count(ex.name)) S[ex.name] = {4, 0};   // kind 4 = extern/native (resolved by name at runtime)
+        for (auto& ex : P.externs) { if (!S.count(ex.name)) S[ex.name] = {4, 0}; prog.nativeKey[ex.name] = ex.tag.empty() ? ex.name : ex.tag + "::" + ex.name; }   // kind 4 = extern/native (resolved by "tag::name" at runtime)
         for (size_t ci0 = 0; ci0 < P.classes.size(); ci0++) {
             ClassAst& C = P.classes[ci0]; int ci = S[C.name].index;
             for (auto& mth : C.methods) { int idx = (int)prog.funcs.size(); prog.funcs.push_back({m + "::" + C.name + "." + mth.name}); prog.classes[ci].methods[mth.name] = idx; }
@@ -138,20 +138,21 @@ static void linkNatives(std::map<std::string, Parsed>& mods, std::vector<std::st
     auto tyName = [](const TyNodeP& n) -> std::string { return n ? (n->isFunc ? "fn" : n->name) : "Void"; };
     for (auto& m : order) {
         for (auto& ex : mods[m].externs) {
-            int idx = natives.find(ex.name);
-            if (idx < 0) { errs.push_back("undefined native '" + ex.name + "' (declared in module '" + m + "')"); continue; }
+            std::string key = ex.tag.empty() ? ex.name : ex.tag + "::" + ex.name;
+            int idx = natives.find(key);
+            if (idx < 0) { errs.push_back("undefined native '" + key + "' (declared in module '" + m + "')"); continue; }
             const NativeSig& sig = natives.entries[idx].sig;
             std::vector<std::string> want;
             for (size_t k = 0; k < ex.params.size(); k++) { if (ex.params[k] == "self") continue; want.push_back(k < ex.ptypes.size() && ex.ptypes[k] ? tyName(ex.ptypes[k]) : "Any"); }
             std::string wantRet = ex.retType ? tyName(ex.retType) : "Void";
             if (!sig.variadic) {
-                if (want.size() != sig.params.size()) { errs.push_back("native '" + ex.name + "': script declares " + std::to_string(want.size()) + " param(s), host provides " + std::to_string(sig.params.size())); continue; }
+                if (want.size() != sig.params.size()) { errs.push_back("native '" + key + "': script declares " + std::to_string(want.size()) + " param(s), host provides " + std::to_string(sig.params.size())); continue; }
                 for (size_t k = 0; k < want.size(); k++)
                     if (want[k] != sig.params[k] && want[k] != "Any" && sig.params[k] != "Any")
-                        errs.push_back("native '" + ex.name + "' param " + std::to_string(k + 1) + ": script declares '" + want[k] + "', host provides '" + sig.params[k] + "'");
+                        errs.push_back("native '" + key + "' param " + std::to_string(k + 1) + ": script declares '" + want[k] + "', host provides '" + sig.params[k] + "'");
             }
             if (wantRet != sig.ret && wantRet != "Any" && sig.ret != "Any")
-                errs.push_back("native '" + ex.name + "': script declares return '" + wantRet + "', host provides '" + sig.ret + "'");
+                errs.push_back("native '" + key + "': script declares return '" + wantRet + "', host provides '" + sig.ret + "'");
         }
     }
 }
@@ -171,6 +172,10 @@ struct Runtime {
     // Expose a C++ function to scripts. params/ret are type names ("Int","Float","Void","Any",...).
     void registerNative(const std::string& name, std::vector<std::string> params, std::string ret, NativeFn fn, bool variadic = false) {
         natives.add(name, {std::move(params), std::move(ret), variadic}, std::move(fn));
+    }
+    // Register under a library tag: a script's `extern "tag" fn name` binds to key "tag::name".
+    void registerNative(const std::string& tag, const std::string& name, std::vector<std::string> params, std::string ret, NativeFn fn, bool variadic = false) {
+        natives.add(tag.empty() ? name : tag + "::" + name, {std::move(params), std::move(ret), variadic}, std::move(fn));
     }
     // Parse, type-check (with the FFI signatures), compile, and run module globals + init once. False on error.
     bool load(const std::string& path) {

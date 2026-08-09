@@ -58,10 +58,11 @@ export interface Func {
   params: string[]; paramLines: number[]; ptypes: (TyNode | null)[];
   retType: TyNode | null; generics: string[]; bounds: Bounds;
   isSig: boolean; vis: number; body: Stmt[];
+  tag: string;   // extern library namespace ("" = global); unused by the dump-only port
 }
 export const mkFunc = (): Func => ({
   name: "", nameLine: 0, params: [], paramLines: [], ptypes: [],
-  retType: null, generics: [], bounds: new Map(), isSig: false, vis: 0, body: [],
+  retType: null, generics: [], bounds: new Map(), isSig: false, vis: 0, body: [], tag: "",
 });
 
 export interface Field {

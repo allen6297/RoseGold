@@ -91,7 +91,9 @@ ModuleInit  = "init" , Suite ;
    in an `extern:` block. Type-checked against these declarations (no host needed
    for --check); the host runtime link-checks them against its registry at load,
    then binds each by name. -- SEMANTIC *)
-ExternDecl  = "extern" , ( ExternMember
+   An optional STRING tag (`extern "audio":`) namespaces the natives: they bind
+   to registry keys "tag::name", so two libraries can share a function name. *)
+ExternDecl  = "extern" , [ STRING ] , ( ExternMember
                          | ":" , NEWLINE , INDENT , { ExternMember } , DEDENT ) ;
 ExternMember = ( FuncSig | "type" , Ident ) , NEWLINE ;
 

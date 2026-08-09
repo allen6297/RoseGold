@@ -51,10 +51,11 @@ struct Parser {
     // `type Name` declares an opaque foreign type (its only value is a host handle).
     void externBlock(int vis, Parsed& p) {
         eatKw("extern");
-        if (isOp(":")) {                                  // extern: <block of fn / type members>
+        std::string tag; if (is(Tk::STR)) tag = next().s;   // optional library tag: extern "audio" ...
+        if (isOp(":")) {                                  // extern ["tag"]: <block of fn / type members>
             beginBlock();
             while (!is(Tk::DEDENT) && !is(Tk::END)) {
-                if (isKw("fn")) { Func f = funcSig(); f.vis = vis; p.externs.push_back(std::move(f)); }
+                if (isKw("fn")) { Func f = funcSig(); f.vis = vis; f.tag = tag; p.externs.push_back(std::move(f)); }
                 else if (is(Tk::IDENT) && peek().s == "type") { i++; p.externTypes.push_back(eatIdent()); }
                 else err("expected 'fn' or 'type' in extern block");
                 skipNL();
@@ -62,8 +63,8 @@ struct Parser {
             if (is(Tk::DEDENT)) i++;
         } else if (is(Tk::IDENT) && peek().s == "type") {  // extern type Name  (one-liner)
             i++; p.externTypes.push_back(eatIdent());
-        } else {                                           // extern fn name(...) -> Ret  (one-liner)
-            Func f = funcSig(); f.vis = vis; p.externs.push_back(std::move(f));
+        } else {                                           // extern ["tag"] fn name(...) -> Ret  (one-liner)
+            Func f = funcSig(); f.vis = vis; f.tag = tag; p.externs.push_back(std::move(f));
         }
     }
     TraitAst traitDecl() {
